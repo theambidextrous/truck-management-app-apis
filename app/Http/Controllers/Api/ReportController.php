@@ -19,6 +19,7 @@ use App\Models\ExpenseGroup;
 use App\Models\Truck;
 use App\Models\Load;
 use App\Models\Driver;
+use App\Models\User;
 use App\Models\Setup;
 use App\Models\Owner;
 
@@ -75,12 +76,14 @@ class ReportController extends Controller
             ->where('created_at', '<=', $to_date)
             ->get();
         if(!is_null($p)){ $trips = $p->toArray();}
-
+        /** dispatcher, driver based on rate */
+        $automatic_deductions = $this->find_auto_charges($trips);
+        /**end */
         $trips_meta = $this->f_trips($trips, $input['rate']);
         $deductions_meta = $this->find_deductions($input, 2);
         $scheduled_meta = $this->find_deductions($input, 1, 4);
         $fuel_meta = $this->find_deductions($input, 3);
-        $check_amt = $this->clean_n($trips_meta[1]) - ($this->clean_n($deductions_meta[1])+$this->clean_n($fuel_meta[1])+$this->clean_n($scheduled_meta[1]));
+        $check_amt = $this->clean_n($trips_meta[1]) - ($this->clean_n($deductions_meta[1])+$this->clean_n($fuel_meta[1])+$this->clean_n($scheduled_meta[1]) + $automatic_deductions);
         $final_Deductions = $this->format_ded_special($deductions_meta[0], $trips);
         $summations = [
             'a' => $trips_meta[1],
@@ -152,12 +155,14 @@ class ReportController extends Controller
             ->where('created_at', '<=', $to_date)
             ->get();
         if(!is_null($p)){ $trips = $p->toArray();}
-
+        /** dispatcher, driver based on rate */
+        $automatic_deductions = $this->find_auto_charges($trips);
+        /**end */
         $trips_meta = $this->f_trips($trips, $input['rate']);
         $deductions_meta = $this->find_deductions($input, 2);
         $scheduled_meta = $this->find_deductions($input, 1, 4);
         $fuel_meta = $this->find_deductions($input, 3);
-        $check_amt = $this->clean_n($trips_meta[1]) - ($this->clean_n($deductions_meta[1])+$this->clean_n($fuel_meta[1])+$this->clean_n($scheduled_meta[1]));
+        $check_amt = $this->clean_n($trips_meta[1]) - ($this->clean_n($deductions_meta[1])+$this->clean_n($fuel_meta[1])+$this->clean_n($scheduled_meta[1]) + $automatic_deductions);
         $final_Deductions = $this->format_ded_special($deductions_meta[0], $trips);
         $summations = [
             'a' => $trips_meta[1],
@@ -193,6 +198,35 @@ class ReportController extends Controller
         return response()->download(storage_path($filename), null, [], null); 
     }
 
+    protected function find_auto_charges($trips)
+    {
+        $rtn = [];
+        foreach( $trips as $_trip ):
+            $driver_rate = $this->clean_n($this->get_driver_rate($_trip));
+            $dispatcher_rate = $this->clean_n($this->get_dispatcher_rate($_trip));
+            $deduction_sum = $driver_rate + $dispatcher_rate;
+            array_push($rtn, $deduction_sum);
+        endforeach;
+        return array_sum($rtn);
+    }
+    protected function get_driver_rate($data)
+    {
+        $d = Driver::find($data['driver']);
+        if(is_null($d))
+        {
+            return 0;
+        }
+        return $this->calc_driver_earn($d->rate_type, $d->rate, $data['rate']);
+    }
+    protected function get_dispatcher_rate($data)
+    {
+        $d = User::find($data['dispatcher']);
+        if(is_null($d))
+        {
+            return 0;
+        }
+        return $this->calc_driver_earn($d->rate_type, $d->rate, $data['rate']);
+    }
     protected function find_deductions($arr, $t = 2, $f = 0)
     {
         $from_date = date('Y-m-d', strtotime($arr['from_date']));
@@ -325,6 +359,7 @@ class ReportController extends Controller
     {
         $data = [];
         $autodriver = [];
+        $autodispatcher = [];
         $added = [];
         foreach($in as $_ded ):
             $_ded['amount_f'] = number_format($_ded['amount'], 2);
@@ -338,9 +373,16 @@ class ReportController extends Controller
         {
             foreach( $trips_list as $_trip):
                 $driver = Driver::find($_trip['driver']);
+                $dispatcher = User::find($_trip['dispatcher']);
+
+                $dispatcher_rtype = $dispatcher->rate_type;
+                $dispatcher_rate = $dispatcher->rate;
+                $dispatcher_earn = $this->calc_driver_earn($dispatcher_rtype,$dispatcher_rate,$_trip['rate']);
+
                 $driver_rtype = $driver->rate_type;
                 $driver_rate = $driver->rate;
                 $driver_earn = $this->calc_driver_earn($driver_rtype,$driver_rate,$_trip['rate']);
+                
                 $ddd = [
                     'description' => $this->driver_desc($driver_rtype,$driver_rate),
                     'amount_f' => $driver_earn,
@@ -348,10 +390,19 @@ class ReportController extends Controller
                     'total' => $driver_earn,
                     'created_at' => $_trip['created_at'],
                 ];
+                $ddd2 = [
+                    'description' => $this->dispatcher_desc($dispatcher_rtype,$dispatcher_rate),
+                    'amount_f' => $dispatcher_earn,
+                    'misc_amount_f' => '0.00',
+                    'total' => $dispatcher_earn,
+                    'created_at' => $_trip['created_at'],
+                ];
                 array_push($added, $this->clean_n($ddd['total']));
+                array_push($added, $this->clean_n($ddd2['total']));
                 array_push($autodriver, $ddd);
+                array_push($autodispatcher, $ddd2);
             endforeach;
-            $data = array_merge($data, $autodriver);
+            $data = array_merge($data, $autodriver, $autodispatcher);
         }
         return [$data, number_format(array_sum($added), 2) ];
     }
@@ -359,9 +410,17 @@ class ReportController extends Controller
     {
         if(intval($type) == 2)
         {
-            return "Driver's pay(driver rate $".$r.")";
+            return "Driver's pay(Rate $".$r.")";
         }
-        return "Driver's pay(driver rate ".$r."%)";
+        return "Driver's pay(Rate ".$r."%)";
+    }
+    protected function dispatcher_desc($type, $r)
+    {
+        if(intval($type) == 2)
+        {
+            return "Dispatcher's pay(Rate $".$r.")";
+        }
+        return "Dispatcher's pay(Rate ".$r."%)";
     }
     protected function calc_driver_earn($type, $r, $value)
     {
