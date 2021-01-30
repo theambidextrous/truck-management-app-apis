@@ -175,15 +175,15 @@
       </thead>
       <tbody>
         @if( count($fuel) )
-          @foreach( $fuel as $fuel )
+          @foreach( $fuel as $_fuel )
               <tr>
-                  <td>{{ $fuel['description'] }}</td>
-                  <td>{{ $fuel['city'] }}</td>
-                  <td>{{ $fuel['state'] }}</td>
-                  <td>${{ $fuel['amount_f'] }}</td>
-                  <td>${{ $fuel['misc_amount_f'] }}</td>
+                  <td>{{ $_fuel['description'] }}</td>
+                  <td>{{ $_fuel['city'] }}</td>
+                  <td>{{ $_fuel['state'] }}</td>
+                  <td>${{ $_fuel['amount_f'] }}</td>
+                  <td>${{ $_fuel['misc_amount_f'] }}</td>
                   <td>{{ date('m/d/Y', strtotime($fuel['created_at'])) }}</td>
-                  <td>${{ $fuel['total'] }}</td>
+                  <td>${{ $_fuel['total'] }}</td>
               </tr>
           @endforeach
         @endif

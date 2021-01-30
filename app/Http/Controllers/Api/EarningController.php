@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Validator;
 use Storage;
 use Config;
+use PDF;
 use Carbon\Carbon;
 
 use App\Models\Expense;
@@ -18,104 +19,376 @@ use App\Models\ExpenseGroup;
 use App\Models\Truck;
 use App\Models\Load;
 use App\Models\Driver;
+use App\Models\Setup;
 use App\Models\User;
+use App\Models\Advance;
 
 
 class EarningController extends Controller
 {
-    public function driver_e(Request $req, $id)
+    public function driver_e(Request $req)
     {
         $validator = Validator::make($req->all(), [
+            'driver' => 'required|string|not_in:nn',
+            'rate' => 'required|string|not_in:nn',
             'from_date' => 'string',
             'to_date' => 'string',
         ]);
         if( $validator->fails() ){
             return response([
                 'status' => 201,
-                'message' => 'Either "Date from" or "Date to" is missing',
+                'message' => 'Invalid report data. Please select driver, rate and dates correctly',
                 'errors' => $validator->errors()->all(),
             ], 403);
         }
         $from_date = date('Y-m-d', strtotime($req->get('from_date')));
         $to_date = date('Y-m-d', strtotime($req->get('to_date')));
-        $data = [];
+        $trips = [];
+        $summations = [
+            'a' => '0.00',
+            'b' => '0.00',
+            'c' => '0.00',
+        ];
         if( $to_date < $from_date )
         {
             return response([
                 'status' => 201,
-                'message' => '"Date from" cannot be greater than "Date to"',
+                'message' => '"Start date" cannot be greater than "End date"',
                 'errors' => [],
-                'data' => $data,
             ], 403);
         }
         if(!strlen($req->get('from_date')) || !strlen($req->get('to_date')))
         {
-            $p = Load::where('is_active', true)->where('driver', $id)->get();
-            if(!is_null($p)){ $data = $p->toArray();}
             return response([
-                'status' => 200,
-                'message' => 'data without dates',
-                'data' => $this->format_earnings_d($data),
-            ], 200);
+                'status' => 201,
+                'message' => 'Invalid report data. Please select valid dates.',
+                'errors' => [],
+            ], 403);
         }
+        $input = $req->all();
         $p = Load::where('is_active', true)
-            ->where('driver', $id)
+            ->where('driver', $input['driver'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->get();
-        if(!is_null($p)){ $data = $p->toArray();}
+        if(!is_null($p)){ $trips = $p->toArray();}
+        $trips_meta = $this->f_trips($trips, $input['rate']);
+        $advances_meta = $this->f_advances($input['driver'], $from_date, $to_date);
+        $summations = [
+            'a' => $trips_meta[1],
+            'b' => number_format($advances_meta[1], 2),
+            'c' => number_format($this->clean_n($trips_meta[1])-$advances_meta[1], 2),
+        ];
         return response([
             'status' => 200,
             'message' => 'data found with dates',
-            'data' => $this->format_earnings_d($data),
+            'trips' => $trips_meta[0],
+            'advances' => $advances_meta[0],
+            'summations' => $summations,
         ], 200);
     }
-    public function dispatcher_e(Request $req, $id)
+
+    public function driver_d(Request $req)
     {
+        $uuid_string = (string)Str::uuid() . '.pdf';
         $validator = Validator::make($req->all(), [
+            'driver' => 'required|string|not_in:nn',
+            'rate' => 'required|string|not_in:nn',
+            'except' => 'array',
             'from_date' => 'string',
             'to_date' => 'string',
         ]);
         if( $validator->fails() ){
             return response([
                 'status' => 201,
-                'message' => 'Either "Date from" or "Date to" is missing',
+                'message' => 'Invalid report data. Please select driver, rate and dates correctly',
+                'errors' => $validator->errors()->all(),
+                'logs' => $req->all(),
+            ], 403);
+        }
+        $from_date = date('Y-m-d', strtotime($req->get('from_date')));
+        $to_date = date('Y-m-d', strtotime($req->get('to_date')));
+        $trips = [];
+        $summations = [
+            'a' => '0.00',
+            'b' => '0.00',
+            'c' => '0.00',
+        ];
+        if( $to_date < $from_date )
+        {
+            return response([
+                'status' => 201,
+                'message' => '"Start date" cannot be greater than "End date"',
+                'errors' => [],
+            ], 403);
+        }
+        if(!strlen($req->get('from_date')) || !strlen($req->get('to_date')))
+        {
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. Please select valid dates.',
+                'errors' => [],
+            ], 403);
+        }
+        $input = $req->all();
+        $p = Load::where('is_active', true)
+            ->where('driver', $input['driver'])
+            ->whereNotIn('id', $input['except'])
+            ->where('created_at', '>=', $from_date)
+            ->where('created_at', '<=', $to_date)
+            ->get();
+        if(!is_null($p)){ $trips = $p->toArray();}
+        $trips_meta = $this->f_trips($trips, $input['rate']);
+        $advances_meta = $this->f_advances($input['driver'], $from_date, $to_date);
+        $summations = [
+            'a' => $trips_meta[1],
+            'b' => number_format($advances_meta[1], 2),
+            'c' => number_format($this->clean_n($trips_meta[1])-$advances_meta[1], 2),
+        ];
+        $driver_meta = Driver::find($input['driver']);
+        $pdf_data = [
+            'trips' => $trips_meta[0],
+            'advances' => $advances_meta[0],
+            'summations' => $summations,
+            'setup' => $this->find_setup(),
+            'owner' => $driver_meta,
+        ];
+        $filename = ('app/cls/' . $uuid_string);
+        PDF::loadView('reports.driver_earn', $pdf_data)->save(storage_path($filename));
+        return response([
+            'status' => 200,
+            'message' => 'Report generated',
+            'fileurl' => route('stream', ['file' => $uuid_string]),
+            'errors' => [],
+        ], 200);
+    }
+    public function dispatcher_e(Request $req)
+    {
+        $validator = Validator::make($req->all(), [
+            'dispatcher' => 'required|string|not_in:nn',
+            'rate' => 'required|string|not_in:nn',
+            'from_date' => 'string',
+            'to_date' => 'string',
+        ]);
+        if( $validator->fails() ){
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. Please select dispatcher, rate and dates correctly',
                 'errors' => $validator->errors()->all(),
             ], 403);
         }
         $from_date = date('Y-m-d', strtotime($req->get('from_date')));
         $to_date = date('Y-m-d', strtotime($req->get('to_date')));
-        $data = [];
+        $trips = [];
+        $summations = [
+            'a' => '0.00',
+            'b' => '0.00',
+            'c' => '0.00',
+        ];
         if( $to_date < $from_date )
         {
             return response([
                 'status' => 201,
-                'message' => '"Date from" cannot be greater than "Date to"',
+                'message' => '"Start date" cannot be greater than "End date"',
                 'errors' => [],
-                'data' => $data,
             ], 403);
         }
         if(!strlen($req->get('from_date')) || !strlen($req->get('to_date')))
         {
-            $p = Load::where('is_active', true)->where('dispatcher', $id)->get();
-            if(!is_null($p)){ $data = $p->toArray();}
             return response([
-                'status' => 200,
-                'message' => 'data without dates',
-                'data' => $this->format_earnings_s($data),
-            ], 200);
+                'status' => 201,
+                'message' => 'Invalid report data. Please select valid dates.',
+                'errors' => [],
+            ], 403);
         }
+        $input = $req->all();
         $p = Load::where('is_active', true)
-            ->where('dispatcher', $id)
+            ->where('dispatcher', $input['dispatcher'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->get();
-        if(!is_null($p)){ $data = $p->toArray();}
+        if(!is_null($p)){ $trips = $p->toArray();}
+        $trips_meta = $this->f_trips_dispa($trips, $input['rate']);
+        $advances_meta = $this->f_advances_dispa($input['dispatcher'], $from_date, $to_date);
+        $summations = [
+            'a' => $trips_meta[1],
+            'b' => number_format($advances_meta[1], 2),
+            'c' => number_format($this->clean_n($trips_meta[1])-$advances_meta[1], 2),
+        ];
         return response([
             'status' => 200,
             'message' => 'data found with dates',
-            'data' => $this->format_earnings_s($data),
+            'trips' => $trips_meta[0],
+            'advances' => $advances_meta[0],
+            'summations' => $summations,
         ], 200);
+    }
+    public function dispatcher_d(Request $req)
+    {
+        $uuid_string = (string)Str::uuid() . '.pdf';
+        $validator = Validator::make($req->all(), [
+            'dispatcher' => 'required|string|not_in:nn',
+            'rate' => 'required|string|not_in:nn',
+            'except' => 'array',
+            'from_date' => 'string',
+            'to_date' => 'string',
+        ]);
+        if( $validator->fails() ){
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. Please select dispatcher, rate and dates correctly',
+                'errors' => $validator->errors()->all(),
+                'logs' => $req->all(),
+            ], 403);
+        }
+        $from_date = date('Y-m-d', strtotime($req->get('from_date')));
+        $to_date = date('Y-m-d', strtotime($req->get('to_date')));
+        $trips = [];
+        $summations = [
+            'a' => '0.00',
+            'b' => '0.00',
+            'c' => '0.00',
+        ];
+        if( $to_date < $from_date )
+        {
+            return response([
+                'status' => 201,
+                'message' => '"Start date" cannot be greater than "End date"',
+                'errors' => [],
+            ], 403);
+        }
+        if(!strlen($req->get('from_date')) || !strlen($req->get('to_date')))
+        {
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. Please select valid dates.',
+                'errors' => [],
+            ], 403);
+        }
+        $input = $req->all();
+        $p = Load::where('is_active', true)
+            ->where('dispatcher', $input['dispatcher'])
+            ->whereNotIn('id', $input['except'])
+            ->where('created_at', '>=', $from_date)
+            ->where('created_at', '<=', $to_date)
+            ->get();
+        if(!is_null($p)){ $trips = $p->toArray();}
+        $trips_meta = $this->f_trips_dispa($trips, $input['rate']);
+        $advances_meta = $this->f_advances_dispa($input['dispatcher'], $from_date, $to_date);
+        $summations = [
+            'a' => $trips_meta[1],
+            'b' => number_format($advances_meta[1], 2),
+            'c' => number_format($this->clean_n($trips_meta[1])-$advances_meta[1], 2),
+        ];
+        $dispatcher_meta = User::find($input['dispatcher']);
+        $pdf_data = [
+            'trips' => $trips_meta[0],
+            'advances' => $advances_meta[0],
+            'summations' => $summations,
+            'setup' => $this->find_setup(),
+            'owner' => $dispatcher_meta,
+        ];
+        $filename = ('app/cls/' . $uuid_string);
+        PDF::loadView('reports.dispatcher_earn', $pdf_data)->save(storage_path($filename));
+        return response([
+            'status' => 200,
+            'message' => 'Report generated',
+            'fileurl' => route('stream', ['file' => $uuid_string]),
+            'errors' => [],
+        ], 200);
+    }
+    protected function f_advances($user, $date1, $date2)
+    {
+        $data = Advance::where('is_active', true)
+            ->where('user', $user)
+            ->where('user_type', 1)
+            ->where('payfrom', '>=', $date1)
+            ->where('payto', '<=', $date2)
+            ->get();
+        $sum = Advance::where('is_active', true)
+            ->where('user', $user)
+            ->where('user_type', 1)
+            ->where('payfrom', '>=', $date1)
+            ->where('payto', '<=', $date2)
+            ->sum('amount');
+        if(is_null($data))
+        {
+            return [ [], 0];
+        }
+        return [ $data->toArray(), $sum ];
+    }
+    protected function f_advances_dispa($user, $date1, $date2)
+    {
+        $data = Advance::where('is_active', true)
+            ->where('user', $user)
+            ->where('user_type', 2)
+            ->where('payfrom', '>=', $date1)
+            ->where('payto', '<=', $date2)
+            ->get();
+        $sum = Advance::where('is_active', true)
+            ->where('user', $user)
+            ->where('user_type', 2)
+            ->where('payfrom', '>=', $date1)
+            ->where('payto', '<=', $date2)
+            ->sum('amount');
+        if(is_null($data))
+        {
+            return [ [], 0];
+        }
+        return [ $data->toArray(), $sum ];
+    }
+    protected function f_trips($in, $rate)
+    {
+        $data = [];
+        $additions = [];
+        foreach($in as $_trip ):
+            $_trip['rate'] = number_format($_trip['rate'], 2);
+            $_trip['net'] = $this->compute_net_rate($_trip['rate'], intval($rate));
+            $net_rate = $this->clean_n($_trip['net']);
+            $d_meta = Driver::find($_trip['driver']);
+            $rtype = $d_meta->rate_type;
+            $r = $d_meta->rate;
+            $_trip['pay'] = $this->calc_driver_earn($rtype, $r, $net_rate);
+            $pay = $this->clean_n($_trip['pay']);
+            array_push($data, $_trip);
+            array_push($additions, $pay);
+        endforeach;
+        return [ $data, number_format(array_sum($additions), 2) ];
+    }
+    protected function f_trips_dispa($in, $rate)
+    {
+        $data = [];
+        $additions = [];
+        foreach($in as $_trip ):
+            $_trip['rate'] = number_format($_trip['rate'], 2);
+            $_trip['net'] = $this->compute_net_rate($_trip['rate'], intval($rate));
+            $net_rate = $this->clean_n($_trip['net']);
+            $d_meta = User::find($_trip['dispatcher']);
+            $rtype = $d_meta->rate_type;
+            $r = $d_meta->rate;
+            $_trip['pay'] = $this->calc_driver_earn($rtype, $r, $net_rate);
+            $pay = $this->clean_n($_trip['pay']);
+            array_push($data, $_trip);
+            array_push($additions, $pay);
+        endforeach;
+        return [ $data, number_format(array_sum($additions), 2) ];
+    }
+    protected function calc_driver_earn($type, $r, $value)
+    {
+        if(intval($type) == 2)
+        {
+            return number_format($r, 2);
+        }
+        return number_format(($r*$value/100), 2);
+    }
+    protected function compute_net_rate($amt, $percent)
+    {
+        $amt = $this->clean_n($amt);
+        return number_format(((100-$percent)/100)*$amt, 2);
+    }
+    protected function clean_n($n)
+    {
+        return str_replace(',', '', $n);
     }
     protected function format_earnings_s($in)
     {
@@ -166,5 +439,22 @@ class EarningController extends Controller
         {
             return number_format(($r),2);
         }
+    }
+    protected function find_setup()
+    {
+        $s = Setup::where('id', '!=', 0)->first();
+        if(!is_null($s))
+        {
+            return $s->toArray();
+        }
+        return [
+            'company' => null,
+            'address' => null,
+            'city' => null,
+            'state' => null,
+            'zip' => null,
+            'email' => null,
+            'phone' => null,
+        ];
     }
 }

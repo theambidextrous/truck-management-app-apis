@@ -15,18 +15,17 @@ class CreateExpensesTable extends Migration
     {
         Schema::create('expenses', function (Blueprint $table) {
             $table->id();
-            $table->string('type', 55);
-            $table->string('truck', 55);
-            $table->string('amount', 55);
+            $table->string('type', 5);
+            $table->string('truck', 5);
+            $table->string('amount', 10);
             $table->string('description', 55);
-            $table->string('startdate', 55)->nullable();
-            $table->string('enddate', 55)->nullable();
-            $table->string('frequency', 55)->nullable();
-            $table->string('limit', 55)->nullable();
-            $table->string('city', 55)->nullable();
-            $table->string('state', 55)->nullable();
-            $table->string('misc_amount', 55)->nullable();
-            $table->boolean('is_active', 55)->default(true);
+            $table->string('installment', 10)->nullable();
+            $table->string('frequency', 15)->nullable();
+            $table->string('city', 30)->nullable();
+            $table->string('state', 30)->nullable();
+            $table->string('misc_amount', 10)->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_paid')->default(false);
             $table->timestamps();
         });
     }

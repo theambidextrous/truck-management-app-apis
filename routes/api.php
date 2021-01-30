@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\OwnerController;
 use App\Http\Controllers\Api\EarningController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\StatController;
+use App\Http\Controllers\Api\AdvanceController;
+use App\Http\Controllers\Api\DeductionController;
 
 /** stream */
 Route::prefix('/downloads')->group( function() {
@@ -112,13 +114,26 @@ Route::middleware(['auth:api'])->group( function(){
         Route::put('/drop/{id}', [ExpenseController::class, 'drop']);
     });
 });
+/** deductions */
+Route::middleware(['auth:api'])->group( function(){
+    Route::prefix('/deductions')->group( function() {
+        Route::post('/add', [DeductionController::class, 'add']);
+        Route::post('/edit/{id}', [DeductionController::class, 'edit']);
+        Route::get('/find/{id}', [DeductionController::class, 'find']);
+        Route::get('/findall', [DeductionController::class, 'findall']);
+        Route::put('/drop/{id}', [DeductionController::class, 'drop']);
+        Route::get('/find-scheduled', [DeductionController::class, 'find_scheduled']);
+    });
+});
 /** earnings */
 Route::middleware(['auth:api'])->group( function(){
     Route::prefix('/earnings')->group( function() {
         /** driver */
-        Route::post('/driver/findall/{id}', [EarningController::class, 'driver_e']);
+        Route::post('/driver/findall', [EarningController::class, 'driver_e']);
+        Route::post('/driver/download', [EarningController::class, 'driver_d']);
         /** dispatcher */
-        Route::post('/dispatcher/findall/{id}', [EarningController::class, 'dispatcher_e']);
+        Route::post('/dispatcher/findall', [EarningController::class, 'dispatcher_e']);
+        Route::post('/dispatcher/download', [EarningController::class, 'dispatcher_d']);
     });
 });
 /** reports */
@@ -127,6 +142,9 @@ Route::middleware(['auth:api'])->group( function(){
         /** weekly */
         Route::post('/weekly', [ReportController::class, 'weekly']);
         Route::post('/download/weekly', [ReportController::class, 'download_weekly']);
+        /** factoring */
+        Route::post('/factoring', [ReportController::class, 'factoring']);
+        Route::post('/download/factoring', [ReportController::class, 'download_factoring']);
     });
 });
 /** statistics */
@@ -137,6 +155,17 @@ Route::middleware(['auth:api'])->group( function(){
     });
 });
 
+/** advances */
+Route::middleware(['auth:api'])->group( function(){
+    Route::prefix('/advances')->group( function() {
+        Route::post('/add', [AdvanceController::class, 'add']);
+        Route::post('/users/{t}', [AdvanceController::class, 'users']);
+        Route::post('/edit/{id}', [AdvanceController::class, 'edit']);
+        Route::get('/find/{id}', [AdvanceController::class, 'find']);
+        Route::get('/findall', [AdvanceController::class, 'findall']);
+        Route::put('/drop/{id}', [AdvanceController::class, 'drop']);
+    });
+});
 
 /** fallback */
 Route::fallback(function () {

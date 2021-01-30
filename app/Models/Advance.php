@@ -5,22 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Expense extends Model
+class Advance extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'type',
-        'truck',
+        'payfrom',
+        'payto',
+        'user',
+        'user_type',
         'amount',
-        'description',
-        'installment',
-        'frequency',
-        'city',
-        'state',
-        'misc_amount',
-        'next_due',
-        'is_paid',
         'is_active',
     ];
 }

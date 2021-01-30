@@ -94,6 +94,10 @@ class ExpenseController extends Controller
             'id' => null,
         ], 200);
     }
+
+
+
+
     /** expes */
     public function add(Request $req)
     {
@@ -123,10 +127,8 @@ class ExpenseController extends Controller
             else
             {
                 $this->validate_other($input); 
-                $input['startdate'] = null;
-                $input['enddate'] = null;
+                $input['installment'] = 0;
                 $input['frequency'] = null;
-                $input['limit'] = null;
             }
             $created = Expense::create($input)->id;
             return response([
@@ -172,10 +174,8 @@ class ExpenseController extends Controller
             else
             {
                 $this->validate_other($input); 
-                $input['startdate'] = null;
-                $input['enddate'] = null;
+                $input['installment'] = 0;
                 $input['frequency'] = null;
-                $input['limit'] = null;
             }
             Expense::find($id)->update($input);
             return response([
@@ -275,17 +275,10 @@ class ExpenseController extends Controller
 
     protected function validate_scheduled($data)
     {
-        if(!strlen($data['startdate']))
+        
+        if(!strlen($data['installment']))
         {
-            throw new \Exception('Start date field is required for scheduled expenses.');
-        }
-        if(!strlen($data['enddate']))
-        {
-            throw new \Exception('End date field is required for scheduled expenses.');
-        }
-        if(!strlen($data['limit']))
-        {
-            throw new \Exception('Limit field is required for scheduled expenses.');
+            throw new \Exception('installment field is required for scheduled expenses.');
         }
         if(!strlen($data['frequency']))
         {

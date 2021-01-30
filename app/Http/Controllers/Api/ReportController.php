@@ -98,7 +98,7 @@ class ReportController extends Controller
             'trips' => $trips_meta[0],
             'deductions' => $final_Deductions[0],
             'fuel' => $this->f_deductions($fuel_meta[0]),
-            'scheduled' => $this->f_deductions($scheduled_meta[0]),
+            'scheduled' => $this->f_deductions_sch($scheduled_meta[0]),
             'summations' => $summations,
         ], 200);
     }
@@ -176,7 +176,7 @@ class ReportController extends Controller
             'trips' => $trips_meta[0],
             'deductions' => $final_Deductions[0],
             'fuel' => $this->f_deductions($fuel_meta[0]),
-            'scheduled' => $this->f_deductions($scheduled_meta[0]),
+            'scheduled' => $this->f_deductions_sch($scheduled_meta[0]),
             'summations' => $summations,
             'setup' => $this->find_setup(),
             'owner' => $this->find_truck_owner($input['truck']),
@@ -184,6 +184,142 @@ class ReportController extends Controller
         ];
         $filename = ('app/cls/' . $uuid_string);
         PDF::loadView('reports.weekly', $pdf_data)->save(storage_path($filename));
+        return response([
+            'status' => 200,
+            'message' => 'Report generated',
+            'fileurl' => route('stream', ['file' => $uuid_string]),
+            'errors' => [],
+        ], 200);
+    }
+
+    public function factoring(Request $req)
+    {
+        $validator = Validator::make($req->all(), [
+            'truck' => 'required|string|not_in:nn',
+            'rate' => 'required|string|not_in:nn',
+            'from_date' => 'string',
+            'to_date' => 'string',
+        ]);
+        if( $validator->fails() ){
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. Please select truck, rate and dates correctly',
+                'errors' => $validator->errors()->all(),
+            ], 403);
+        }
+        $from_date = date('Y-m-d', strtotime($req->get('from_date')));
+        $to_date = date('Y-m-d', strtotime($req->get('to_date')));
+        $trips = [];
+        $deductions = [];
+        $scheduled = [];
+        $fuel = [];
+        $summations = [
+            'a' => '0.00',
+            'b' => '0.00',
+            'c' => '0.00',
+            'd' => '0.00',
+            'e' => '0.00',
+        ];
+        if( $to_date < $from_date )
+        {
+            return response([
+                'status' => 201,
+                'message' => '"Start date" cannot be greater than "End date"',
+                'errors' => [],
+            ], 403);
+        }
+        if(!strlen($req->get('from_date')) || !strlen($req->get('to_date')))
+        {
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. Please select valid dates.',
+                'errors' => [],
+            ], 403);
+        }
+        $input = $req->all();
+        $p = Load::where('is_active', true)
+            ->where('truck', $input['truck'])
+            ->where('created_at', '>=', $from_date)
+            ->where('created_at', '<=', $to_date)
+            ->get();
+        if(!is_null($p)){ $trips = $p->toArray();}
+        $trips_meta = $this->f_trips($trips, $input['rate']);
+        $summations = [
+            'a' => $trips_meta[1],
+        ];
+        return response([
+            'status' => 200,
+            'message' => 'data found with dates',
+            'trips' => $trips_meta[0],
+            'summations' => $summations,
+        ], 200);
+    }
+
+    public function download_factoring(Request $req)
+    {
+        $uuid_string = (string)Str::uuid() . '.pdf';
+        $validator = Validator::make($req->all(), [
+            'truck' => 'required|string|not_in:nn',
+            'rate' => 'required|string|not_in:nn',
+            'except' => 'required|array',
+            'from_date' => 'string',
+            'to_date' => 'string',
+        ]);
+        if( $validator->fails() ){
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. Please select truck, rate and dates correctly',
+                'errors' => $validator->errors()->all(),
+            ], 403);
+        }
+        $from_date = date('Y-m-d', strtotime($req->get('from_date')));
+        $to_date = date('Y-m-d', strtotime($req->get('to_date')));
+        $trips = [];
+        $deductions = [];
+        $scheduled = [];
+        $fuel = [];
+        $summations = [
+            'a' => '0.00',
+        ];
+        if( $to_date < $from_date )
+        {
+            return response([
+                'status' => 201,
+                'message' => '"Start date" cannot be greater than "End date"',
+                'errors' => [],
+            ], 403);
+        }
+        if(!strlen($req->get('from_date')) || !strlen($req->get('to_date')))
+        {
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. Please select valid dates.',
+                'errors' => [],
+            ], 403);
+        }
+        $input = $req->all();
+        // $input['except'] = [];
+        $p = Load::where('is_active', true)
+            ->where('truck', $input['truck'])
+            ->whereNotIn('id', $input['except'])
+            ->where('created_at', '>=', $from_date)
+            ->where('created_at', '<=', $to_date)
+            ->get();
+        if(!is_null($p)){ $trips = $p->toArray();}
+        $trips_meta = $this->f_trips($trips, $input['rate']);
+        $summations = [
+            'a' => $trips_meta[1],
+        ];
+        $truck_meta = Truck::find($input['truck']);
+        $pdf_data = [
+            'trips' => $trips_meta[0],
+            'summations' => $summations,
+            'setup' => $this->find_setup(),
+            'owner' => $this->find_truck_owner($input['truck']),
+            'truck' => $truck_meta->make . '-' . $truck_meta->number,
+        ];
+        $filename = ('app/cls/' . $uuid_string);
+        PDF::loadView('reports.factoring', $pdf_data)->save(storage_path($filename));
         return response([
             'status' => 200,
             'message' => 'Report generated',
@@ -236,23 +372,27 @@ class ReportController extends Controller
         {
             $p = Expense::where('type', $t)
                 ->where('is_active', true)
+                ->where('is_paid', false)
+                ->where('next_due', '!=', null)
                 ->where('truck', $arr['truck'])
-                ->where('startdate', '<=', $from_date)
-                ->where('enddate', '>=', $to_date)
+                ->where('next_due', '<=', $to_date)
                 ->get();
             $sum = Expense::where('type', $t)
                 ->where('is_active', true)
+                ->where('is_paid', false)
+                ->where('next_due', '!=', null)
                 ->where('truck', $arr['truck'])
-                ->where('startdate', '<=', $from_date)
-                ->where('enddate', '>=', $to_date)
-                ->sum('amount');
-            $sum_misc = Expense::where('type', $t)
-                ->where('is_active', true)
-                ->where('truck', $arr['truck'])
-                ->where('startdate', '<=', $from_date)
-                ->where('enddate', '>=', $to_date)
-                ->sum('misc_amount');
-            $sum_f = number_format($sum + $sum_misc, 2);
+                ->where('next_due', '<=', $to_date)
+                ->sum('installment');
+            // $sum_misc = Expense::where('type', $t)
+            //     ->where('is_active', true)
+            //     ->where('is_paid', false)
+            //     ->where('next_due', '!=', null)
+            //     ->where('truck', $arr['truck'])
+            //     ->where('next_due', '>=', $from_date)
+            //     ->where('next_due', '<=', $to_date)
+            //     ->sum('misc_amount');
+            $sum_f = number_format($sum, 2);
             if(!is_null($p))
             { 
                 return [ $p->toArray(), $sum_f ];
@@ -304,6 +444,18 @@ class ReportController extends Controller
             $_ded['amount_f'] = number_format($_ded['amount'], 2);
             $_ded['misc_amount_f'] = number_format($_ded['misc_amount'], 2);
             $_ded['total'] = number_format($_ded['amount'] + $_ded['misc_amount'], 2);
+            array_push($data, $_ded);
+        endforeach;
+        return $data;
+    }
+    protected function f_deductions_sch($in, $trips_list = [] )
+    {
+        $data = [];
+        $autodriver = [];
+        foreach($in as $_ded ):
+            $_ded['amount_f'] = number_format($_ded['installment'], 2);
+            $_ded['misc_amount_f'] = number_format($_ded['misc_amount'], 2);
+            $_ded['total'] = number_format($_ded['installment'] + $_ded['misc_amount'], 2);
             array_push($data, $_ded);
         endforeach;
         return $data;
