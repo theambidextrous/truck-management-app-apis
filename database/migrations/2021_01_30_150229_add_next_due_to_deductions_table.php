@@ -14,7 +14,7 @@ class AddNextDueToDeductionsTable extends Migration
     public function up()
     {
         Schema::table('expenses', function (Blueprint $table) {
-            $table->string('next_due', 12)->nullable();
+            $table->string('next_due', 12)->default(date('Y-m-d'));
         });
     }
 
