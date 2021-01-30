@@ -165,6 +165,10 @@ class StatController extends Controller
     {
         $now = date('Y-m-d');
         $first_exp_date = Expense::where('is_active', true)->orderBy('id', 'asc')->first();
+        if(is_null($first_exp_date))
+        {
+            return 0;
+        }
         $first_exp_date = $first_exp_date->created_at;
         $months_count = $this->count_months($first_exp_date, $now);
         $sum_exp_a = Expense::where('is_active', true)->sum('amount');
