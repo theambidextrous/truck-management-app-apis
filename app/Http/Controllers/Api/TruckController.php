@@ -25,6 +25,9 @@ class TruckController extends Controller
             'owner' => 'required|string|not_in:nn',
             'make' => 'required|string',
             'vin' => 'required|string',
+            'insurance_expires' => 'required|string',
+            'inspection_expires' => 'required|string',
+            'registration_expires' => 'required|string',
         ]);
         if( $validator->fails() ){
             return response([
@@ -104,6 +107,30 @@ class TruckController extends Controller
                         'id' => [],
                     ], 403);
                 }
+                if(!isset( $_truck['insurance_expires'] ))
+                {
+                    return response([
+                        'status' => 201,
+                        'message' => 'Import error. Uploaded file has no "insurance_expires" column',
+                        'id' => [],
+                    ], 403);
+                }
+                if(!isset( $_truck['inspection_expires'] ))
+                {
+                    return response([
+                        'status' => 201,
+                        'message' => 'Import error. Uploaded file has no "inspection_expires" column',
+                        'id' => [],
+                    ], 403);
+                }
+                if(!isset( $_truck['registration_expires'] ))
+                {
+                    return response([
+                        'status' => 201,
+                        'message' => 'Import error. Uploaded file has no "registration_expires" column',
+                        'id' => [],
+                    ], 403);
+                }
                 $_truck['number'] = strtoupper($_truck['number']);
                 $_truck['make'] = strtoupper($_truck['make']);
                 $_truck['vin'] = strtoupper($_truck['vin']);
@@ -135,6 +162,9 @@ class TruckController extends Controller
             'owner' => 'required|string',
             'make' => 'required|string',
             'vin' => 'required|string',
+            'insurance_expires' => 'required|string',
+            'inspection_expires' => 'required|string',
+            'registration_expires' => 'required|string',
         ]);
         if( $validator->fails() ){
             return response([

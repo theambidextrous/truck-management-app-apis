@@ -40,6 +40,18 @@ class LoadController extends Controller
             ], 403);
         }
         $input = $req->all();
+        try
+        {
+            $this->has_expired_docs($input['truck']);
+        }
+        catch( Exception $excep )
+        {
+            return response([
+                'status' => 201,
+                'message' => $excep->getMessage(),
+                'errors' => [],
+            ], 403);
+        }
         if($this->exists_load_number($input['number']))
         {
             return response([
@@ -79,6 +91,18 @@ class LoadController extends Controller
             ], 403);
         }
         $input = $req->all();
+        try
+        {
+            $this->has_expired_docs($input['truck']);
+        }
+        catch( Exception $excep )
+        {
+            return response([
+                'status' => 201,
+                'message' => $excep->getMessage(),
+                'errors' => [],
+            ], 403);
+        }
         if($this->exists_load_number($input['number']))
         {
             return response([
@@ -169,5 +193,24 @@ class LoadController extends Controller
     protected function exists_load_number($no)
     {
         return Load::where('number', $no)->count() > 0;
+    }
+    protected function has_expired_docs($truck)
+    {
+        $now = date('Y-m-d');
+        $truck_meta = Truck::find($truck);
+
+        if( $now > date('Y-m-d', strtotime($truck_meta->insurance_expires)) )
+        {
+            throw new \Exception('Error. The insurance cover for the selected truck has expired.');
+        }
+        if( $now > date('Y-m-d', strtotime($truck_meta->inspection_expires)) )
+        {
+            throw new \Exception('Error. This truck requires Inspection once again.');
+        }
+        if( $now > date('Y-m-d', strtotime($truck_meta->registration_expires)) )
+        {
+            throw new \Exception('Error. The registration for the selected truck has expired.');
+        }
+        return;
     }
 }

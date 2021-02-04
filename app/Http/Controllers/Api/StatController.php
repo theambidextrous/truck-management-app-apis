@@ -27,6 +27,7 @@ class StatController extends Controller
     public function dashboard()
     {
         
+        $rem_meta = $this->find_truck_reminders();
         $stat = [
             'trucks' => $this->find_trucks_count(),
             'trips' => $this->find_trips_count(),
@@ -37,6 +38,8 @@ class StatController extends Controller
             'top_five_exp' => $this->find_top_five_exp(),
             'top_five_loads' => $this->find_top_five_loads(),
             'top_five_mileage' => $this->find_top_mileage_loads(),
+            'has_reminders' => $rem_meta[0],
+            'reminders' => $rem_meta[1],
         ];
         return response([
             'status' => 200,
@@ -203,6 +206,67 @@ class StatController extends Controller
             return 1;
         }
         return $diff;
+    }
+    protected function find_truck_reminders()
+    {
+        $now = date('Y-m-d');
+        $insurance = Truck::where('insurance_expires', '<', $now)->get();
+        $inspection = Truck::where('inspection_expires', '<', $now)->get();
+        $registration = Truck::where('registration_expires', '<', $now)->get();
+        $insur = $this->format_insu($insurance);
+        $inspec = $this->format_inspect($inspection);
+        $regi = $this->format_reg($registration);
+        $final = array_merge($regi, $insur, $inspec);
+        if( count($final) )
+        {
+            return [1, $final];
+        }
+        return [0, $final];
+    }
+    protected function format_insu($obj)
+    {
+        if(is_null($obj))
+        {
+            return [];
+        }
+        $rtn = [];
+        $data = $obj->toArray();
+        foreach( $data as $_data ):
+            $fl = [];
+            $fl['tlabel'] = $_data['make'] . ' Reg No. ' . $_data['number'] . ' - Insurance is expired';
+            array_push($rtn, $fl);
+        endforeach;
+        return $rtn;
+    }
+    protected function format_inspect($obj)
+    {
+        if(is_null($obj))
+        {
+            return [];
+        }
+        $rtn = [];
+        $data = $obj->toArray();
+        foreach( $data as $_data ):
+            $fl = [];
+            $fl['tlabel'] = $_data['make'] . ' Reg No. ' . $_data['number'] . ' - Inspection is overdue';
+            array_push($rtn, $fl);
+        endforeach;
+        return $rtn;
+    }
+    protected function format_reg($obj)
+    {
+        if(is_null($obj))
+        {
+            return [];
+        }
+        $rtn = [];
+        $data = $obj->toArray();
+        foreach( $data as $_data ):
+            $fl = [];
+            $fl['tlabel'] = $_data['make'] . ' Reg No. ' . $_data['number'] . ' - Registration is expired';
+            array_push($rtn, $fl);
+        endforeach;
+        return $rtn;
     }
     protected function format_ks($k)
     {

@@ -14,6 +14,9 @@ class Truck extends Model
         'owner',
         'make',
         'vin',
+        'insurance_expires',
+        'inspection_expires',
+        'registration_expires',
         'is_active',
     ];
 
