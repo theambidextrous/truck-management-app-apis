@@ -103,14 +103,14 @@ class LoadController extends Controller
                 'errors' => [],
             ], 403);
         }
-        if($this->exists_load_number($input['number']))
-        {
-            return response([
-                'status' => 201,
-                'message' => 'Data error. Load number is already used. Enter a different number',
-                'errors' => [],
-            ], 403);
-        }
+        // if($this->exists_load_number($input['number']))
+        // {
+        //     return response([
+        //         'status' => 201,
+        //         'message' => 'Data error. Load number is already used. Enter a different number',
+        //         'errors' => [],
+        //     ], 403);
+        // }
         Load::find($id)->update($input);
         return response([
             'status' => 200,
@@ -186,7 +186,7 @@ class LoadController extends Controller
         $t = Truck::find($truck);
         if(!is_null($t))
         {
-            $tlabel = $t->make . '-' . $t->vin;
+            $tlabel = $t->make . '-' . $t->number;
         }
         return [ $tlabel, $dlabel ];
     }

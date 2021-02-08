@@ -54,9 +54,8 @@
         <!-- <td class="td-borderless" style="width:300px!important;"></td> -->
         <td class="td-borderless" style="text-align:right!important;width:350px">
             <span style="font-weight:700; font-size:20px">Factoring</span><br>
-            <span style="font-weight:700; font-size:20px">{{ $owner['company'] }}</span><br>
             <span style="font-weight:700; font-size:20px">{{ date('m/d/Y') }}</span><br>
-            <span style="font-weight:700; font-size:20px">Truck #{{ $truck }}</span><br>
+            <span style="font-weight:700; font-size:20px">Period: {{ $truck }}</span><br>
         </td>
       </tr>
       </table>      
@@ -64,12 +63,6 @@
     <hr>
   </header>
   <!-- Main Content -->
-    <p class="text-1 text-left text-dark custom-p">
-    {{ $owner['company'] }}<br>
-    {{ $owner['address'] }} <br>
-    {{ $owner['city'] }}, {{ $owner['state'] }} {{ $owner['zip'] }}
-    </p>
-    <!-- Passenger Details -->
     <!-- TRIPS ================== -->
     <h4 class="text-4 mt-2"><b>Trips:</b></h4>
    <table class="table" id="customers" width="800px">
@@ -77,10 +70,8 @@
         <tr>
           <th>Trip. NO.</th>
           <th>Description</th>
-          <!-- <th>Mileage</th> -->
           <th>Date</th>
-          <th>Freight Amt</th>
-          <th>Net Amount</th>
+          <th>Load Rate</th>
         </tr>
       </thead>
       <tbody>
@@ -89,15 +80,13 @@
               <tr>
                   <td>{{ $trp['number'] }}</td>
                   <td>{{ $trp['origin'] }}, {{ $trp['destination'] }}</td>
-                  <!-- <td>{{ $trp['mileage'] }}</td> -->
                   <td>{{ date('m/d/Y', strtotime($trp['created_at'])) }}</td>
                   <td>${{ $trp['rate'] }}</td>
-                  <td>${{ $trp['net'] }}</td>
               </tr>
           @endforeach
         @endif
         <tr>
-          <td colspan="3" class="td-borderless"></td>
+          <td colspan="2" class="td-borderless"></td>
           <td><b>Total</b></td>
           <td><b class="color-dt">${{ $summations['a'] }}</b></td>
         </tr>

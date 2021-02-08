@@ -195,8 +195,8 @@ class ReportController extends Controller
     public function factoring(Request $req)
     {
         $validator = Validator::make($req->all(), [
-            'truck' => 'required|string|not_in:nn',
-            'rate' => 'required|string|not_in:nn',
+            // 'truck' => 'required|string|not_in:nn',
+            // 'rate' => 'required|string|not_in:nn',
             'from_date' => 'string',
             'to_date' => 'string',
         ]);
@@ -238,12 +238,12 @@ class ReportController extends Controller
         }
         $input = $req->all();
         $p = Load::where('is_active', true)
-            ->where('truck', $input['truck'])
+            // ->where('truck', $input['truck'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->get();
         if(!is_null($p)){ $trips = $p->toArray();}
-        $trips_meta = $this->f_trips($trips, $input['rate']);
+        $trips_meta = $this->f_trips_factor($trips);
         $summations = [
             'a' => $trips_meta[1],
         ];
@@ -259,8 +259,8 @@ class ReportController extends Controller
     {
         $uuid_string = (string)Str::uuid() . '.pdf';
         $validator = Validator::make($req->all(), [
-            'truck' => 'required|string|not_in:nn',
-            'rate' => 'required|string|not_in:nn',
+            // 'truck' => 'required|string|not_in:nn',
+            // 'rate' => 'required|string|not_in:nn',
             'except' => 'required|array',
             'from_date' => 'string',
             'to_date' => 'string',
@@ -300,23 +300,23 @@ class ReportController extends Controller
         $input = $req->all();
         // $input['except'] = [];
         $p = Load::where('is_active', true)
-            ->where('truck', $input['truck'])
+            // ->where('truck', $input['truck'])
             ->whereNotIn('id', $input['except'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->get();
         if(!is_null($p)){ $trips = $p->toArray();}
-        $trips_meta = $this->f_trips($trips, $input['rate']);
+        $trips_meta = $this->f_trips_factor($trips);
         $summations = [
             'a' => $trips_meta[1],
         ];
-        $truck_meta = Truck::find($input['truck']);
+        // $truck_meta = Truck::find($input['truck']);
         $pdf_data = [
             'trips' => $trips_meta[0],
             'summations' => $summations,
             'setup' => $this->find_setup(),
-            'owner' => $this->find_truck_owner($input['truck']),
-            'truck' => $truck_meta->make . '-' . $truck_meta->number,
+            // 'owner' => $this->find_truck_owner($input['truck']),
+            'truck' => date('m/d/Y', strtotime($from_date)) . ' to ' . date('m/d/Y', strtotime($to_date)),
         ];
         $filename = ('app/cls/' . $uuid_string);
         PDF::loadView('reports.factoring', $pdf_data)->save(storage_path($filename));
@@ -423,6 +423,18 @@ class ReportController extends Controller
             return [ $p->toArray(), $sum_f ];
         }
         return [ [], $sum_f ];
+    }
+    protected function f_trips_factor($in)
+    {
+        $data = [];
+        $additions = [];
+        foreach($in as $_trip ):
+            $_trip['rate'] = number_format($_trip['rate'], 2);
+            // $_trip['net'] = $this->compute_net_rate($_trip['rate'], intval($rate));
+            array_push($data, $_trip);
+            array_push($additions, $this->clean_n($_trip['rate']));
+        endforeach;
+        return [ $data, number_format(array_sum($additions), 2) ];
     }
     protected function f_trips($in, $rate)
     {

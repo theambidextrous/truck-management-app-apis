@@ -177,6 +177,7 @@ class DeductionController extends Controller
         $rtn = [];
         foreach( $data as $_data ):
             $_data['label'] = $_data['description'] . ' (' . $this->find_exp_label($_data['truck']) . ')';
+            $_data['datelabel'] = date('m/d/Y', strtotime($_data['payment_date']));
             array_push($rtn, $_data);
         endforeach;
 
@@ -187,13 +188,16 @@ class DeductionController extends Controller
         $rtn = [];
         foreach( $data as $_data ):
             $exp_meta = Expense::find($_data['expense']);
-            $desc = $exp_meta->description;
-            $truck = $this->find_exp_label($exp_meta->truck);
-            $_data['explabel'] = $desc . '(' . $truck . ')';
-            $_data['total'] = $exp_meta->amount;
-            $_data['paid_sf'] = $this->find_paid_so_far($_data['expense']);
-            $_data['bal'] = $_data['total'] - $_data['paid_sf'];
-            array_push($rtn, $_data);
+            if(!is_null($exp_meta))
+            {
+                $desc = $exp_meta->description;
+                $truck = $this->find_exp_label($exp_meta->truck);
+                $_data['explabel'] = $desc . '(' . $truck . ')';
+                $_data['total'] = $exp_meta->amount;
+                $_data['paid_sf'] = $this->find_paid_so_far($_data['expense']);
+                $_data['bal'] = $_data['total'] - $_data['paid_sf'];
+                array_push($rtn, $_data);
+            }
         endforeach;
 
         return $rtn;
