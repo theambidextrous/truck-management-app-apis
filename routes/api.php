@@ -94,6 +94,10 @@ Route::middleware(['auth:api'])->group( function(){
         Route::get('/find/{id}', [LoadController::class, 'find']);
         Route::get('/findall', [LoadController::class, 'findall']);
         Route::put('/drop/{id}', [LoadController::class, 'drop']);
+
+        Route::get('/distance/{from}/and/{to}', [LoadController::class, 'getDistance']);
+        Route::get('/brokers', [LoadController::class, 'brokers']);
+        Route::post('/upload/{id}', [LoadController::class, 'loadUpload']);
     });
 });
 /** expenses */

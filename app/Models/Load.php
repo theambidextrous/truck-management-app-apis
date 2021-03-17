@@ -8,19 +8,33 @@ use Illuminate\Database\Eloquent\Model;
 class Load extends Model
 {
     use HasFactory;
-
     protected $fillable = [
         'dispatcher',
-        'booking_date',
-        'number',
-        'origin',
-        'destination',
-        'milage',
-        'rate',
-        'weight',
+        'date',
+        'bol',
+        'company',
+        'contact',
+        'street',
+        'city',
+        'state',
+        'zip',
+        'broker',
+        'd_date',
+        'pol',
+        'd_company',
+        'd_contact',
+        'd_street',
+        'd_city',
+        'd_state',
+        'd_zip',
+        'delivery_docs',
         'truck',
-        'driver',
+        'trailer',
+        'miles',
+        'weight',
+        'rate',
+        'driver_a',
+        'driver_b',
         'is_active',
-        'mileage',
     ];
 }

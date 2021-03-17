@@ -27,6 +27,7 @@ return [
     */
 
     'env' => env('APP_ENV', 'production'),
+    'mapskey' => env('APP_MAPSKEY'),
     /**
      * FOREX CONFIG
      */
