@@ -88,7 +88,7 @@ class StatController extends Controller
     protected function find_top_mileage_loads()
     {
         $summations = Load::groupBy('truck')
-            ->selectRaw('sum(mileage) as sum, truck')
+            ->selectRaw('sum(miles) as sum, truck')
             ->orderBy('sum', 'desc')
             ->pluck('sum','truck');
         $data = [];
@@ -146,9 +146,13 @@ class StatController extends Controller
         // return $summations;
         foreach( $summations as $_truck => $rev ):
             $trk_meta = Truck::find($_truck);
-            $entry = [
-                $trk_meta->make . ' - ' . $trk_meta->number => intval($rev),
-            ];
+            $entry = [];
+            if(!is_null($trk_meta))
+            {
+                $entry = [
+                    $trk_meta->make . ' - ' . $trk_meta->number => intval($rev),
+                ];
+            }
             array_push($data, $entry);
         endforeach;
         return $data;
