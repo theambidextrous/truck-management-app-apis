@@ -21,6 +21,7 @@ use App\Models\Load;
 use App\Models\Driver;
 use App\Models\Setup;
 use App\Models\Owner;
+use App\Models\Broker;
 
 class StatController extends Controller
 {
@@ -33,11 +34,16 @@ class StatController extends Controller
             'trips' => $this->find_trips_count(),
             'revenue' => '$' . $this->find_revenue_avr(),
             'expenses' => '$' . $this->find_expenses_avr(),
+
             'revexp' => $this->find_rev_exp_data(),
             'top_ten' => $this->find_top_ten_trucks(),
-            'top_five_exp' => $this->find_top_five_exp(),
-            'top_five_loads' => $this->find_top_five_loads(),
-            'top_five_mileage' => $this->find_top_mileage_loads(),
+            'driver_rev' => $this->find_top_ten_driver_rev(),
+            'fuel_cons' => $this->find_fuel_cons_data(),
+            'broker_loads' => $this->find_top_ten_broker_loads_count(),
+            'fuel_mile' => $this->find_fuel_mile_scatter(),
+            'fuel_rev' => $this->find_fuel_rev_scatter(),
+            'fuel_weight' => $this->find_fuel_weight_scatter(),
+
             'has_reminders' => $rem_meta[0],
             'reminders' => $rem_meta[1],
         ];
@@ -48,18 +54,105 @@ class StatController extends Controller
     }
     protected function find_rev_exp_data()
     {
-        $six_months = $this->find_six_m_ago();
+        $six_months = $this->find_12_m_ago();
         $data = [];
         foreach( array_reverse($six_months) as $_six):
-            $exp_a = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
-                ->sum('amount');
-            $exp_b = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
-                ->sum('misc_amount');
-            $exp_sum = $exp_a + $exp_b;
             $rev_sum = Load::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
                 ->sum('rate');
             $entry = [
-                $_six . '~' . date('F', strtotime($_six)) => $this->format_in_1000($rev_sum) . '~' . $this->format_in_1000($exp_sum),
+                $_six . '~' . date('F', strtotime($_six)) => $this->format_in_1000($rev_sum) . '~1',
+            ];
+            array_push($data, $entry);
+        endforeach;
+
+        return $data;
+    }
+    protected function find_fuel_mile_scatter()
+    {
+        $six_months = $this->find_12_m_ago();
+        $data_f = $data_m = [];
+        $count = 1;
+        foreach( array_reverse($six_months) as $_six):
+            $fuel_suma = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('type', 3)
+                ->sum('amount');
+            $fuel_sumb = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('type', 3)
+                ->sum('misc_amount');
+            $fuel_sum = $fuel_suma + $fuel_sumb;
+            $mile_sum = Load::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->sum('miles');
+            $entry_f = [ 'x' => $count, 'y' => round($fuel_sum) ];
+            $entry_m = [ 'x' => $count, 'y' => round($mile_sum) ];
+            array_push($data_f, $entry_f);
+            array_push($data_m, $entry_m);
+            $count ++;
+        endforeach;
+        $rtn = [ 'f' => $data_f, 'm' => $data_m, ];
+        return $rtn;
+    }
+    protected function find_fuel_rev_scatter()
+    {
+        $six_months = $this->find_12_m_ago();
+        $data_f = $data_r = [];
+        $count = 1;
+        foreach( array_reverse($six_months) as $_six):
+            $fuel_suma = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('type', 3)
+                ->sum('amount');
+            $fuel_sumb = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('type', 3)
+                ->sum('misc_amount');
+            $fuel_sum = $fuel_suma + $fuel_sumb;
+            $rev_sum = Load::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->sum('rate');
+            $entry_f = [ 'x' => $count, 'y' => round($fuel_sum) ];
+            $entry_r = [ 'x' => $count, 'y' => round($rev_sum) ];
+            array_push($data_f, $entry_f);
+            array_push($data_r, $entry_r);
+            $count ++;
+        endforeach;
+        $rtn = [ 'f' => $data_f, 'r' => $data_r, ];
+        return $rtn;
+    }
+    protected function find_fuel_weight_scatter()
+    {
+        $six_months = $this->find_12_m_ago();
+        $data_f = $data_w = [];
+        $count = 1;
+        foreach( array_reverse($six_months) as $_six):
+            $fuel_suma = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('type', 3)
+                ->sum('amount');
+            $fuel_sumb = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('type', 3)
+                ->sum('misc_amount');
+            $fuel_sum = $fuel_suma + $fuel_sumb;
+            $weight_sum = Load::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->sum('weight');
+            $entry_f = [ 'x' => $count, 'y' => round($fuel_sum) ];
+            $entry_w = [ 'x' => $count, 'y' => round($weight_sum) ];
+            array_push($data_f, $entry_f);
+            array_push($data_w, $entry_w);
+            $count ++;
+        endforeach;
+        $rtn = [ 'f' => $data_f, 'w' => $data_w, ];
+        return $rtn;
+    }
+    protected function find_fuel_cons_data()
+    {
+        $six_months = $this->find_12_m_ago();
+        $data = [];
+        foreach( array_reverse($six_months) as $_six):
+            $exp_suma = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('type', 3)
+                ->sum('amount');
+            $exp_sumb = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('type', 3)
+                ->sum('misc_amount');
+            $exp_sum = $exp_suma + $exp_sumb;
+            $entry = [
+                $_six . '~' . date('Y-m-d', strtotime($_six)) => $this->format_in_1000($exp_sum) . '~1',
             ];
             array_push($data, $entry);
         endforeach;
@@ -72,7 +165,25 @@ class StatController extends Controller
         {
             return 0;
         }
-        return intval($k/1000);
+        return $k;
+        // return intval($k/1000);
+    }
+    protected function find_12_m_ago()
+    {
+        return [
+            date('Y-m-d'),
+            date("Y-m-d", strtotime("-1 months")),
+            date("Y-m-d", strtotime("-2 months")),
+            date("Y-m-d", strtotime("-3 months")),
+            date("Y-m-d", strtotime("-4 months")),
+            date("Y-m-d", strtotime("-5 months")),
+            date("Y-m-d", strtotime("-6 months")),
+            date("Y-m-d", strtotime("-7 months")),
+            date("Y-m-d", strtotime("-8 months")),
+            date("Y-m-d", strtotime("-9 months")),
+            date("Y-m-d", strtotime("-10 months")),
+            date("Y-m-d", strtotime("-11 months")),
+        ];
     }
     protected function find_six_m_ago()
     {
@@ -84,57 +195,6 @@ class StatController extends Controller
             date("Y-m-d", strtotime("-4 months")),
             date("Y-m-d", strtotime("-5 months")),
         ];
-    }
-    protected function find_top_mileage_loads()
-    {
-        $summations = Load::groupBy('truck')
-            ->selectRaw('sum(miles) as sum, truck')
-            ->orderBy('sum', 'desc')
-            ->pluck('sum','truck');
-        $data = [];
-        // return $summations;
-        foreach( $summations as $_truck => $weight ):
-            $trk_meta = Truck::find($_truck);
-            $entry = [
-                $trk_meta->make . ' - ' . $trk_meta->number => intval($weight),
-            ];
-            array_push($data, $entry);
-        endforeach;
-        return $data;
-    }
-    protected function find_top_five_loads()
-    {
-        $summations = Load::groupBy('truck')
-            ->selectRaw('sum(weight) as sum, truck')
-            ->orderBy('sum', 'desc')
-            ->pluck('sum','truck');
-        $data = [];
-        // return $summations;
-        foreach( $summations as $_truck => $weight ):
-            $trk_meta = Truck::find($_truck);
-            $entry = [
-                $trk_meta->make . ' - ' . $trk_meta->number => intval($weight),
-            ];
-            array_push($data, $entry);
-        endforeach;
-        return $data;
-    }
-    protected function find_top_five_exp()
-    {
-        $summations = Expense::groupBy('type')
-            ->selectRaw('sum( amount + misc_amount ) as sum, type')
-            ->orderBy('sum', 'desc')
-            ->pluck('sum','type');
-        $data = [];
-        // return $summations;
-        foreach( $summations as $_type => $exp ):
-            $trk_meta = ExpenseGroup::find($_type);
-            $entry = [
-                $trk_meta->name . '($)' => intval($exp),
-            ];
-            array_push($data, $entry);
-        endforeach;
-        return $data;
     }
     protected function find_top_ten_trucks()
     {
@@ -152,10 +212,72 @@ class StatController extends Controller
                 $entry = [
                     $trk_meta->make . ' - ' . $trk_meta->number => intval($rev),
                 ];
+                array_push($data, $entry);
             }
-            array_push($data, $entry);
         endforeach;
         return $data;
+    }
+    protected function find_top_ten_broker_loads_count()
+    {
+        $summations = Load::groupBy('broker')
+            ->selectRaw('count(*) as cnt, broker')
+            ->pluck('cnt','broker');
+        $data = [];
+        // return $summations;
+        foreach( $summations as $_broker => $rev ):
+            $brk_meta = Broker::find($_broker);
+            $entry = [];
+            if(!is_null($brk_meta))
+            {
+                $entry = [
+                    $brk_meta->name => intval($rev),
+                ];
+                array_push($data, $entry);
+            }
+        endforeach;
+        return $data;
+    }
+    protected function find_top_ten_driver_rev()
+    {
+        $summation_a = Load::groupBy('driver_a')
+            ->selectRaw('sum(rate) as sum, driver_a')
+            ->orderBy('sum', 'desc')
+            ->pluck('sum','driver_a');
+        $summation_b = Load::groupBy('driver_b')
+            ->selectRaw('sum(rate) as sum, driver_b as driver_a')
+            ->where('driver_b', '!=', null)
+            ->orderBy('sum', 'desc')
+            ->pluck('sum','driver_a');
+        $summations = $this->joinObjects($summation_a, $summation_b);
+        $data = [];
+        foreach( $summations as $_driver => $rev ):
+            $driver_meta = Driver::find($_driver);
+            $entry = [];
+            if(!is_null($driver_meta))
+            {
+                $entry = [
+                    $driver_meta->fname . ' ' . $driver_meta->lname => intval($rev),
+                ];
+                array_push($data, $entry);
+            }
+        endforeach;
+        return array_slice($data, 0, 10);
+    }
+    protected function joinObjects($a, $b)
+    {
+        if( is_null($a) && is_null($b))
+        {
+            return [];
+        }
+        if( is_null($b))
+        {
+            return $a->toArray();
+        }
+        if( is_null($a))
+        {
+            return $b->toArray();
+        }
+        return array_merge($a->toArray(), $b->toArray());
     }
     protected function find_revenue_avr()
     {

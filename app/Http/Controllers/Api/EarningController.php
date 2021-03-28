@@ -67,10 +67,18 @@ class EarningController extends Controller
         }
         $input = $req->all();
         $p = Load::where('is_active', true)
-            ->where('driver', $input['driver'])
+            ->where('driver_a', $input['driver'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->get();
+        if(is_null($p))
+        {
+            $p = Load::where('is_active', true)
+                ->where('driver_b', $input['driver'])
+                ->where('created_at', '>=', $from_date)
+                ->where('created_at', '<=', $to_date)
+                ->get();
+        }
         if(!is_null($p)){ $trips = $p->toArray();}
         $trips_meta = $this->f_trips($trips, $input['rate']);
         $advances_meta = $this->f_advances($input['driver'], $from_date, $to_date);
@@ -132,11 +140,20 @@ class EarningController extends Controller
         }
         $input = $req->all();
         $p = Load::where('is_active', true)
-            ->where('driver', $input['driver'])
+            ->where('driver_a', $input['driver'])
             ->whereNotIn('id', $input['except'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->get();
+        if(is_null($p))
+        {
+            $p = Load::where('is_active', true)
+                ->where('driver_b', $input['driver'])
+                ->whereNotIn('id', $input['except'])
+                ->where('created_at', '>=', $from_date)
+                ->where('created_at', '<=', $to_date)
+                ->get();
+        }
         if(!is_null($p)){ $trips = $p->toArray();}
         $trips_meta = $this->f_trips($trips, $input['rate']);
         $advances_meta = $this->f_advances($input['driver'], $from_date, $to_date);

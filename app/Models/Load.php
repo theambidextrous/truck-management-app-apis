@@ -36,5 +36,7 @@ class Load extends Model
         'driver_a',
         'driver_b',
         'is_active',
+        'is_delivered',
+        'is_paid',
     ];
 }

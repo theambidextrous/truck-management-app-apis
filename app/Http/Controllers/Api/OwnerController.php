@@ -11,9 +11,11 @@ use Illuminate\Support\Str;
 use Validator;
 use Storage;
 use Config;
+use DB;
 use Carbon\Carbon;
 
 use App\Models\Owner;
+use App\Models\Freport;
 
 class OwnerController extends Controller
 {
@@ -84,17 +86,22 @@ class OwnerController extends Controller
     }
     public function findall()
     {
-        $data = [];
-        $p = Owner::where('is_active', true)->orderBy('id', 'desc')->get();
-        if(!is_null($p))
-        {
-            $data = $p->toArray();
-        }
         return response([
             'status' => 200,
             'message' => 'Entries fetched successfully',
-            'data' => $data,
+            'data' => $this->find_owners(),
+            'next_report' => $this->find_next_rpt(),
         ], 200);
+    }
+    protected function find_next_rpt()
+    {
+        $prefix = '1000';
+        $d = Freport::select('id')->where('id', '!=', 0)->first();
+        if(is_null($d))
+        {
+            return $prefix . '1';
+        }
+        return  $prefix . $d->id;
     }
     protected function find_owners()
     {

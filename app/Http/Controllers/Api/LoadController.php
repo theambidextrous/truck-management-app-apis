@@ -201,6 +201,44 @@ class LoadController extends Controller
             ], 403);
         }
     }
+    public function loadPaid(Request $req, $id)
+    {
+        try {
+            $validator = Validator::make($req->all(), [
+                'status' => 'required|string|not_in:nn',
+            ]);
+            if( $validator->fails() ){
+                return response([
+                    'status' => 201,
+                    'message' => 'Select a valid payment status',
+                    'errors' => $validator->errors()->all(),
+                ], 403);
+            }
+            $status = $req->get('status');
+            if(intval($status) == 1)
+            {
+                Load::find($id)->update([
+                    'is_paid' => true,
+                ]);
+                return response([
+                    'status' => 200,
+                    'message' => 'Cargo entry has updated "PAID" status',
+                    'data' => null,
+                ], 200);
+            }
+            return response([
+                'status' => 200,
+                'message' => 'Cargo entry has "UNPAID" status',
+                'data' => null,
+            ], 200);
+        } catch (\Throwable $th) {
+            return response([
+                'status' => 201,
+                'message' => 'Load update error occured.',
+                'data' => null,
+            ], 403);
+        }
+    }
     public function brokers()
     {
         $b = Broker::where('id', '!=', 0)->orderBy('name', 'asc')->get();

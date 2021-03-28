@@ -13,6 +13,7 @@ use Storage;
 use Config;
 use Carbon\Carbon;
 use PDF;
+use File;
 
 use App\Models\Expense;
 use App\Models\ExpenseGroup;
@@ -20,6 +21,7 @@ use App\Models\Truck;
 use App\Models\Load;
 use App\Models\Driver;
 use App\Models\User;
+use App\Models\Freport;
 use App\Models\Setup;
 use App\Models\Owner;
 
@@ -191,135 +193,147 @@ class ReportController extends Controller
             'errors' => [],
         ], 200);
     }
-
-    public function factoring(Request $req)
+    public function find_loads_delivered()
     {
-        $validator = Validator::make($req->all(), [
-            // 'truck' => 'required|string|not_in:nn',
-            // 'rate' => 'required|string|not_in:nn',
-            'from_date' => 'string',
-            'to_date' => 'string',
-        ]);
-        if( $validator->fails() ){
-            return response([
-                'status' => 201,
-                'message' => 'Invalid report data. Please select truck, rate and dates correctly',
-                'errors' => $validator->errors()->all(),
-            ], 403);
-        }
-        $from_date = date('Y-m-d', strtotime($req->get('from_date')));
-        $to_date = date('Y-m-d', strtotime($req->get('to_date')));
         $trips = [];
-        $deductions = [];
-        $scheduled = [];
-        $fuel = [];
-        $summations = [
-            'a' => '0.00',
-            'b' => '0.00',
-            'c' => '0.00',
-            'd' => '0.00',
-            'e' => '0.00',
-        ];
-        if( $to_date < $from_date )
-        {
-            return response([
-                'status' => 201,
-                'message' => '"Start date" cannot be greater than "End date"',
-                'errors' => [],
-            ], 403);
-        }
-        if(!strlen($req->get('from_date')) || !strlen($req->get('to_date')))
-        {
-            return response([
-                'status' => 201,
-                'message' => 'Invalid report data. Please select valid dates.',
-                'errors' => [],
-            ], 403);
-        }
-        $input = $req->all();
         $p = Load::where('is_active', true)
-            // ->where('truck', $input['truck'])
-            ->where('created_at', '>=', $from_date)
-            ->where('created_at', '<=', $to_date)
+            ->where('is_delivered', true)
+            ->where('is_paid', false)
+            ->orderBy('id', 'desc')
             ->get();
-        if(!is_null($p)){ $trips = $p->toArray();}
-        $trips_meta = $this->f_trips_factor($trips);
-        $summations = [
-            'a' => $trips_meta[1],
-        ];
+        $summation_dollar = Load::where('is_active', true)
+            ->where('is_delivered', true)
+            ->where('is_paid', false)
+            ->sum('rate');
+        if(!is_null($p))
+        { 
+            $trips = $p->toArray();
+        }
         return response([
             'status' => 200,
             'message' => 'data found with dates',
-            'trips' => $trips_meta[0],
-            'summations' => $summations,
+            'data' => $this->formatFactoringTrips($trips),
+            'count' => count($trips),
+            'total' => number_format($summation_dollar, 1),
+            'company' => null,
         ], 200);
     }
-
-    public function download_factoring(Request $req)
+    public function factoring(Request $req)
     {
-        $uuid_string = (string)Str::uuid() . '.pdf';
         $validator = Validator::make($req->all(), [
-            // 'truck' => 'required|string|not_in:nn',
-            // 'rate' => 'required|string|not_in:nn',
-            'except' => 'required|array',
-            'from_date' => 'string',
-            'to_date' => 'string',
+            'company' => 'required|string',
         ]);
         if( $validator->fails() ){
             return response([
                 'status' => 201,
-                'message' => 'Invalid report data. Please select truck, rate and dates correctly',
+                'message' => 'Invalid report data. Please select company',
                 'errors' => $validator->errors()->all(),
             ], 403);
         }
-        $from_date = date('Y-m-d', strtotime($req->get('from_date')));
-        $to_date = date('Y-m-d', strtotime($req->get('to_date')));
         $trips = [];
-        $deductions = [];
-        $scheduled = [];
-        $fuel = [];
-        $summations = [
-            'a' => '0.00',
-        ];
-        if( $to_date < $from_date )
-        {
-            return response([
-                'status' => 201,
-                'message' => '"Start date" cannot be greater than "End date"',
-                'errors' => [],
-            ], 403);
-        }
-        if(!strlen($req->get('from_date')) || !strlen($req->get('to_date')))
-        {
-            return response([
-                'status' => 201,
-                'message' => 'Invalid report data. Please select valid dates.',
-                'errors' => [],
-            ], 403);
-        }
-        $input = $req->all();
-        // $input['except'] = [];
+        $company = $req->get('company');
+        $company_trucks = $this->find_co_trucks($company);
         $p = Load::where('is_active', true)
-            // ->where('truck', $input['truck'])
-            ->whereNotIn('id', $input['except'])
-            ->where('created_at', '>=', $from_date)
-            ->where('created_at', '<=', $to_date)
+            ->where('is_delivered', true)
+            ->where('is_paid', false)
+            ->whereIn('truck', $company_trucks)
+            ->orderBy('id', 'desc')
             ->get();
-        if(!is_null($p)){ $trips = $p->toArray();}
-        $trips_meta = $this->f_trips_factor($trips);
-        $summations = [
-            'a' => $trips_meta[1],
-        ];
-        // $truck_meta = Truck::find($input['truck']);
+        $summation_dollar = Load::where('is_active', true)
+            ->where('is_delivered', true)
+            ->where('is_paid', false)
+            ->whereIn('truck', $company_trucks)
+            ->sum('rate');
+        if(!is_null($p))
+        { 
+            $trips = $p->toArray();
+        }
+        return response([
+            'status' => 200,
+            'message' => 'data found with dates',
+            'data' => $this->formatFactoringTrips($trips),
+            'count' => count($trips),
+            'total' => number_format($summation_dollar, 1),
+            'company' => $company,
+        ], 200);
+    }
+    protected function formatFactoringTrips($data, $div = '')
+    {
+        if( !count($data) ) { return []; }
+        $rtn = [];
+        foreach( $data as $_data ):
+            $_data['created_at'] = date("m/d/Y", strtotime($_data['created_at']));
+            $_data['updated_at'] = date("m/d/Y", strtotime($_data['updated_at']));
+            $_data['division'] = $div;
+            $_data['status'] = 'Delivered';
+            $_data['rate'] = number_format($_data['rate'], 1);
+            array_push($rtn, $_data);
+        endforeach;
+        return $rtn;
+    }
+    protected function find_co_trucks($co)
+    {
+        $d = Truck::select('id')->where('owner', $co)->get();
+        if(is_null($d))
+        {
+            return [];
+        }
+        return $d->toArray();
+    }
+    public function export_invoices(Request $req)
+    {
+        $uuid_string = (string)Str::uuid() . '.pdf';
+        $validator = Validator::make($req->all(), [
+            'loads' => 'required|array',
+        ]);
+        if( $validator->fails() ){
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. No report entries selected',
+                'errors' => $validator->errors()->all(),
+            ], 403);
+        }
+        $trips = [];
+        $totals = 0;
+        $loadIds = $req->get('loads');
+        sort($loadIds);
+        if( !count($loadIds) )
+        {
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. No entries to export',
+                'errors' => [],
+            ], 403);
+        }
+        $firstId = $loadIds[0];
+        $reportName = 'exp-inv-loads-' . $loadIds[0] . '-to-load-' . $loadIds[count($loadIds)-1];
+        $p = Load::where('is_active', true)
+            ->whereIn('id', $loadIds)
+            ->get();
+        $sum = Load::where('is_active', true)
+            ->whereIn('id', $loadIds)
+            ->sum('rate');
+        if(!is_null($p)){ 
+            $trips = $p->toArray();
+        }
         $pdf_data = [
-            'trips' => $trips_meta[0],
-            'summations' => $summations,
+            'trips' => $this->formatFactoringTrips($trips),
+            'total' => number_format($sum, 1),
+            'count' => count($trips),
             'setup' => $this->find_setup(),
-            // 'owner' => $this->find_truck_owner($input['truck']),
-            'truck' => date('m/d/Y', strtotime($from_date)) . ' to ' . date('m/d/Y', strtotime($to_date)),
+            'owner' => $this->findTruckOwnerByLoad($firstId),
         ];
         $filename = ('app/cls/' . $uuid_string);
-        PDF::loadView('reports.factoring', $pdf_data)->save(storage_path($filename));
+        PDF::loadView('reports.exportInvoices', $pdf_data, [], [
+            'orientation' => 'L'
+        ])->save(storage_path($filename));
+        $freportData = [
+            'name' => $reportName,
+            'download' => $uuid_string,
+            'items' => implode(',', $loadIds),
+        ];
+        Freport::where('name', $reportName)->delete();
+        Freport::create($freportData);
         return response([
             'status' => 200,
             'message' => 'Report generated',
@@ -327,7 +341,204 @@ class ReportController extends Controller
             'errors' => [],
         ], 200);
     }
-
+    public function export_invoices_paperwork(Request $req)
+    {
+        $uuid_string = (string)Str::uuid() . '.pdf';
+        $zip_uuid_string = (string)Str::uuid() . '.zip';
+        $validator = Validator::make($req->all(), [
+            'loads' => 'required|array',
+        ]);
+        if( $validator->fails() ){
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. No report entries selected',
+                'errors' => $validator->errors()->all(),
+            ], 403);
+        }
+        $trips = [];
+        $totals = 0;
+        $loadIds = $req->get('loads');
+        sort($loadIds);
+        if( !count($loadIds) )
+        {
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. No entries to export',
+                'errors' => [],
+            ], 403);
+        }
+        $firstId = $loadIds[0];
+        $reportName = 'exp-inv-loads-' . $loadIds[0] . '-to-load-' . $loadIds[count($loadIds)-1] . '.pdf';
+        $p = Load::where('is_active', true)
+            ->whereIn('id', $loadIds)
+            ->get();
+        $sum = Load::where('is_active', true)
+            ->whereIn('id', $loadIds)
+            ->sum('rate');
+        if(!is_null($p)){ 
+            $trips = $p->toArray();
+        }
+        $pdf_data = [
+            'trips' => $this->formatFactoringTrips($trips),
+            'total' => number_format($sum, 1),
+            'count' => count($trips),
+            'setup' => $this->find_setup(),
+            'owner' => $this->findTruckOwnerByLoad($firstId),
+        ];
+        $filename = ('app/cls/' . $reportName);
+        PDF::loadView('reports.exportInvoices', $pdf_data, [], [
+            'orientation' => 'L'
+        ])->save(storage_path($filename));
+        $zipables = $this->pullPaperWorkFromLoads($trips);
+        array_push($zipables, $reportName . '~~' . $reportName);
+        /** zipper */
+        $zip = new \ZipArchive();
+        $zipFileName = ('app/cls/' . $zip_uuid_string);
+        if ($zip->open(storage_path($zipFileName), \ZipArchive::CREATE)== TRUE)
+        {
+            foreach ( $zipables as $zipable ){
+                $flArr = explode('~~', $zipable);
+                $fl = new \Illuminate\Http\File(storage_path('app/cls/' . $flArr[0]));
+                $relativeName = $flArr[1];
+                $zip->addFile($fl, $relativeName);
+            }
+            $zip->close();
+        }
+        /** end zipper */
+        $freportData = [
+            'name' => $reportName,
+            'download' => $zip_uuid_string,
+            'items' => implode(',', $loadIds),
+        ];
+        Freport::where('name', $reportName)->delete();
+        Freport::create($freportData);
+        return response([
+            'status' => 200,
+            'message' => 'Report generated',
+            'fileurl' => route('stream', ['file' => $zip_uuid_string]),
+            'errors' => [],
+        ], 200);
+    }
+    public function export_paperwork(Request $req)
+    {
+        $uuid_string = (string)Str::uuid() . '.pdf';
+        $zip_uuid_string = (string)Str::uuid() . '.zip';
+        $validator = Validator::make($req->all(), [
+            'loads' => 'required|array',
+        ]);
+        if( $validator->fails() ){
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. No report entries selected',
+                'errors' => $validator->errors()->all(),
+            ], 403);
+        }
+        $trips = [];
+        $totals = 0;
+        $loadIds = $req->get('loads');
+        sort($loadIds);
+        if( !count($loadIds) )
+        {
+            return response([
+                'status' => 201,
+                'message' => 'Invalid report data. No entries to export',
+                'errors' => [],
+            ], 403);
+        }
+        $firstId = $loadIds[0];
+        $reportName = 'exp-paperwork-loads-' . $loadIds[0] . '-to-load-' . $loadIds[count($loadIds)-1] . '.zip';
+        $p = Load::where('is_active', true)
+            ->whereIn('id', $loadIds)
+            ->get();
+        if(!is_null($p)){ 
+            $trips = $p->toArray();
+        }
+        $zipables = $this->pullPaperWorkFromLoads($trips);
+        /** zipper */
+        $zip = new \ZipArchive();
+        $zipFileName = ('app/cls/' . $zip_uuid_string);
+        if ($zip->open(storage_path($zipFileName), \ZipArchive::CREATE)== TRUE)
+        {
+            foreach ( $zipables as $zipable ){
+                $flArr = explode('~~', $zipable);
+                $fl = new \Illuminate\Http\File(storage_path('app/cls/' . $flArr[0]));
+                $relativeName = $flArr[1];
+                $zip->addFile($fl, $relativeName);
+            }
+            $zip->close();
+        }
+        /** end zipper */
+        $freportData = [
+            'name' => $reportName,
+            'download' => $zip_uuid_string,
+            'items' => implode(',', $loadIds),
+        ];
+        Freport::where('name', $reportName)->delete();
+        Freport::create($freportData);
+        return response([
+            'status' => 200,
+            'message' => 'Report generated',
+            'fileurl' => route('stream', ['file' => $zip_uuid_string]),
+            'errors' => [],
+        ], 200);
+    }
+    protected function pullPaperWorkFromLoads($data)
+    {
+        $rtn = [];
+        foreach( $data as $_data ):
+            if(!is_null($_data['delivery_docs']))
+            {
+                $ext = explode('.', $_data['delivery_docs'])[1];
+                $zipable = 'paperwork-load-' . $_data['id'] . '.' . $ext;
+                $fn = $_data['delivery_docs'] . '~~' . $zipable;
+                array_push($rtn, $fn);
+            }
+        endforeach;
+        return $rtn;
+    }
+    protected function findTruckOwnerByLoad($load)
+    {
+        $l = Load::find($load);
+        if(is_null($l))
+        {
+            return [
+                'company' => null,
+                'address' => null,
+                'city' => null,
+                'state' => null,
+                'zip' => null,
+                'email' => null,
+                'phone' => null,
+            ]; 
+        }
+        $t = Truck::find($l->truck);
+        if(is_null($t))
+        {
+            return [
+                'company' => null,
+                'address' => null,
+                'city' => null,
+                'state' => null,
+                'zip' => null,
+                'email' => null,
+                'phone' => null,
+            ]; 
+        }
+        $o = Owner::find($t->owner);
+        if(is_null($o))
+        {
+            return [
+                'company' => null,
+                'address' => null,
+                'city' => null,
+                'state' => null,
+                'zip' => null,
+                'email' => null,
+                'phone' => null,
+            ]; 
+        }
+        return $o->toArray();
+    }
     public function stream($file)
     {
         $filename = ('app/cls/' . $file);

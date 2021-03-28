@@ -5,7 +5,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Weekly earning report</title>
+<title>Factoring invoices</title>
 <style>
 #customers {
   font-family: Arial, Helvetica, sans-serif;
@@ -53,9 +53,10 @@
         </td>
         <!-- <td class="td-borderless" style="width:300px!important;"></td> -->
         <td class="td-borderless" style="text-align:right!important;width:350px">
-            <span style="font-weight:700; font-size:20px">Factoring</span><br>
-            <span style="font-weight:700; font-size:20px">{{ date('m/d/Y') }}</span><br>
-            <span style="font-weight:700; font-size:20px">Period: {{ $truck }}</span><br>
+            <span style="font-weight:700; font-size:20px">Factoring Report</span><br>
+            <span style="font-weight:700; font-size:20px">{{ $owner['company'] }}</span><br>
+            <span style="font-weight:700; font-size:20px">{{ $owner['address'] }}, {{ $owner['state'] }}, USA</span><br>
+            <span style="font-weight:700; font-size:20px">{{ $owner['email'] }}</span><br>
         </td>
       </tr>
       </table>      
@@ -64,31 +65,46 @@
   </header>
   <!-- Main Content -->
     <!-- TRIPS ================== -->
-    <h4 class="text-4 mt-2"><b>Trips:</b></h4>
+    <h4 class="text-4 mt-2"><b>Invoices:</b></h4>
    <table class="table" id="customers" width="800px">
       <thead class="dark-head">
         <tr>
-          <th>Trip. NO.</th>
-          <th>Description</th>
-          <th>Date</th>
-          <th>Load Rate</th>
+          <th>Invoice#</th>
+          <th>Load#</th>
+          <th>Route</th>
+          <th>Invoice Date</th>
+          <th>Truck#</th>
+          <th>Drop-off</th>
+          <th>Status</th>
+          <th>Total</th>
         </tr>
       </thead>
       <tbody>
         @if(count($trips))
           @foreach( $trips as $trp )
               <tr>
-                  <td>{{ $trp['number'] }}</td>
-                  <td>{{ $trp['origin'] }}, {{ $trp['destination'] }}</td>
-                  <td>{{ date('m/d/Y', strtotime($trp['created_at'])) }}</td>
-                  <td>${{ $trp['rate'] }}</td>
+                <td>{{ $trp['id'] }}</td>
+                <td>{{ $trp['id'] }}</td>
+                <td>
+                {{ $trp['city'] . ", " . $trp['state'] }} - 
+                {{ $trp['d_city'] . ", " . $trp['d_state'] }} 
+                </td>
+                <td>{{ $trp['created_at'] }}</td>
+                <td>{{ $trp['truck'] }}</td>
+                <td>{{ $trp['updated_at'] }}</td>
+                <td>{{ $trp['status'] }}</td>
+                <td>${{ $trp['rate'] }}</td>
               </tr>
           @endforeach
         @endif
         <tr>
-          <td colspan="2" class="td-borderless"></td>
+          <td><b>Count</b></td>
+          <td><b class="color-dt">{{ $count }}</b></td>
+
+          <td colspan="4" class="td-borderless"></td>
+
           <td><b>Total</b></td>
-          <td><b class="color-dt">${{ $summations['a'] }}</b></td>
+          <td><b class="color-dt">${{ $total }}</b></td>
         </tr>
       </tbody>
     </table>

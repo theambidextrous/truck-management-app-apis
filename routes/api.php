@@ -98,6 +98,7 @@ Route::middleware(['auth:api'])->group( function(){
         Route::get('/distance/{from}/and/{to}', [LoadController::class, 'getDistance']);
         Route::get('/brokers', [LoadController::class, 'brokers']);
         Route::post('/upload/{id}', [LoadController::class, 'loadUpload']);
+        Route::post('/paid/{id}', [LoadController::class, 'loadPaid']);
     });
 });
 /** expenses */
@@ -147,8 +148,11 @@ Route::middleware(['auth:api'])->group( function(){
         Route::post('/weekly', [ReportController::class, 'weekly']);
         Route::post('/download/weekly', [ReportController::class, 'download_weekly']);
         /** factoring */
+        Route::post('/factoring/loads/d', [ReportController::class, 'find_loads_delivered']);
         Route::post('/factoring', [ReportController::class, 'factoring']);
-        Route::post('/download/factoring', [ReportController::class, 'download_factoring']);
+        Route::post('/export/invoices', [ReportController::class, 'export_invoices']);
+        Route::post('/export/invoices/paperwork', [ReportController::class, 'export_invoices_paperwork']);
+        Route::post('/export/paperwork', [ReportController::class, 'export_paperwork']);
     });
 });
 /** statistics */
