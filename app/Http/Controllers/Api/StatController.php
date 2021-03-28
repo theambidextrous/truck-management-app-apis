@@ -245,7 +245,7 @@ class StatController extends Controller
             ->pluck('sum','driver_a');
         $summation_b = Load::groupBy('driver_b')
             ->selectRaw('sum(rate) as sum, driver_b as driver_a')
-            ->where('driver_b', '!=', null)
+            ->where('driver_b', '!=', 'nn')
             ->orderBy('sum', 'desc')
             ->pluck('sum','driver_a');
         $summations = $this->joinObjects($summation_a, $summation_b);
