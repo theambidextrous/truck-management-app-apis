@@ -33,6 +33,7 @@ class ExpenseController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $input['account'] = Auth::user()->account;
         $created = ExpenseGroup::create($input)->id;
         return response([
             'status' => 200,
@@ -54,7 +55,18 @@ class ExpenseController extends Controller
                 'errors' => $validator->errors()->all(),
             ], 403);
         }
-        ExpenseGroup::find($id)->update($req->all());
+        if( ExpenseGroup::find($id)->account == 1 )
+        {
+            return response([
+                'status' => 201,
+                'message' => 'Could not update system values',
+                'id' => $id,
+                'data' => [],
+            ], 403);
+        }
+        $input = $req->all();
+        // $input['account'] = Auth::user()->account;
+        ExpenseGroup::find($id)->update($input);
         return response([
             'status' => 200,
             'message' => 'Category entry updated successfully',
@@ -74,7 +86,8 @@ class ExpenseController extends Controller
     public function g_findall()
     {
         $data = [];
-        $p = ExpenseGroup::where('id', '!=', 0)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = ExpenseGroup::whereIn('account', [$account, 1])->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();
@@ -115,6 +128,7 @@ class ExpenseController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $input['account'] = Auth::user()->account;
         try
         {
             if( intval($input['type']) == 1)
@@ -162,6 +176,7 @@ class ExpenseController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $input['account'] = Auth::user()->account;
         try
         {
             if( intval($input['type']) == 1)
@@ -205,7 +220,9 @@ class ExpenseController extends Controller
     public function findall()
     {
         $data = [];
-        $p = Expense::where('is_active', true)->get();
+        $account = Auth::user()->account;
+        $p = Expense::where('is_active', true)
+            ->where('account', $account)->get();
         if(!is_null($p))
         {
             $data = $p->toArray();
@@ -218,6 +235,7 @@ class ExpenseController extends Controller
     }
     public function by_truck(Request $req, $id)
     {
+        $account = Auth::user()->account;
         $validator = Validator::make($req->all(), [
             'from_date' => 'string',
             'to_date' => 'string',
@@ -243,7 +261,8 @@ class ExpenseController extends Controller
         }
         if(!strlen($req->get('from_date')) || !strlen($req->get('to_date')))
         {
-            $p = Expense::where('is_active', true)->where('truck', $id)->get();
+            $p = Expense::where('is_active', true)
+                ->where('account', $account)->where('truck', $id)->get();
             if(!is_null($p)){ $data = $p->toArray();}
             return response([
                 'status' => 200,
@@ -253,6 +272,7 @@ class ExpenseController extends Controller
         }
         $p = Expense::where('is_active', true)
             ->where('truck', $id)
+            ->where('account', $account)
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->get();
@@ -303,7 +323,8 @@ class ExpenseController extends Controller
     protected function find_exp_groups()
     {
         $data = [];
-        $p = ExpenseGroup::where('id', '!=', 0)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = ExpenseGroup::whereIn('account', [$account, 1])->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();
@@ -313,7 +334,9 @@ class ExpenseController extends Controller
     protected function find_expenses()
     {
         $data = [];
-        $p = Expense::where('is_active', true)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = Expense::where('is_active', true)
+            ->where('account', $account)->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();

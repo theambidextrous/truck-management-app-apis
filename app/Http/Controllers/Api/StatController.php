@@ -54,10 +54,12 @@ class StatController extends Controller
     }
     protected function find_rev_exp_data()
     {
+        $account = Auth::user()->account;
         $six_months = $this->find_12_m_ago();
         $data = [];
         foreach( array_reverse($six_months) as $_six):
             $rev_sum = Load::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('account', $account)
                 ->sum('rate');
             $entry = [
                 $_six . '~' . date('F', strtotime($_six)) => $this->format_in_1000($rev_sum) . '~1',
@@ -70,17 +72,21 @@ class StatController extends Controller
     protected function find_fuel_mile_scatter()
     {
         $six_months = $this->find_12_m_ago();
+        $account = Auth::user()->account;
         $data_f = $data_m = [];
         $count = 1;
         foreach( array_reverse($six_months) as $_six):
             $fuel_suma = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
                 ->where('type', 3)
+                ->where('account', $account)
                 ->sum('amount');
             $fuel_sumb = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
                 ->where('type', 3)
+                ->where('account', $account)
                 ->sum('misc_amount');
             $fuel_sum = $fuel_suma + $fuel_sumb;
             $mile_sum = Load::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('account', $account)
                 ->sum('miles');
             $entry_f = [ 'x' => $count, 'y' => round($fuel_sum) ];
             $entry_m = [ 'x' => $count, 'y' => round($mile_sum) ];
@@ -94,17 +100,21 @@ class StatController extends Controller
     protected function find_fuel_rev_scatter()
     {
         $six_months = $this->find_12_m_ago();
+        $account = Auth::user()->account;
         $data_f = $data_r = [];
         $count = 1;
         foreach( array_reverse($six_months) as $_six):
             $fuel_suma = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
                 ->where('type', 3)
+                ->where('account', $account)
                 ->sum('amount');
             $fuel_sumb = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
                 ->where('type', 3)
+                ->where('account', $account)
                 ->sum('misc_amount');
             $fuel_sum = $fuel_suma + $fuel_sumb;
             $rev_sum = Load::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('account', $account)
                 ->sum('rate');
             $entry_f = [ 'x' => $count, 'y' => round($fuel_sum) ];
             $entry_r = [ 'x' => $count, 'y' => round($rev_sum) ];
@@ -118,17 +128,21 @@ class StatController extends Controller
     protected function find_fuel_weight_scatter()
     {
         $six_months = $this->find_12_m_ago();
+        $account = Auth::user()->account;
         $data_f = $data_w = [];
         $count = 1;
         foreach( array_reverse($six_months) as $_six):
             $fuel_suma = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
                 ->where('type', 3)
+                ->where('account', $account)
                 ->sum('amount');
             $fuel_sumb = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
                 ->where('type', 3)
+                ->where('account', $account)
                 ->sum('misc_amount');
             $fuel_sum = $fuel_suma + $fuel_sumb;
             $weight_sum = Load::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
+                ->where('account', $account)
                 ->sum('weight');
             $entry_f = [ 'x' => $count, 'y' => round($fuel_sum) ];
             $entry_w = [ 'x' => $count, 'y' => round($weight_sum) ];
@@ -142,13 +156,16 @@ class StatController extends Controller
     protected function find_fuel_cons_data()
     {
         $six_months = $this->find_12_m_ago();
+        $account = Auth::user()->account;
         $data = [];
         foreach( array_reverse($six_months) as $_six):
             $exp_suma = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
                 ->where('type', 3)
+                ->where('account', $account)
                 ->sum('amount');
             $exp_sumb = Expense::where('created_at', 'like', '%' . date('Y-m', strtotime($_six)). '%')
                 ->where('type', 3)
+                ->where('account', $account)
                 ->sum('misc_amount');
             $exp_sum = $exp_suma + $exp_sumb;
             $entry = [
@@ -198,8 +215,10 @@ class StatController extends Controller
     }
     protected function find_top_ten_trucks()
     {
+        $account = Auth::user()->account;
         $summations = Load::groupBy('truck')
             ->selectRaw('sum(rate) as sum, truck')
+            ->where('account', $account)
             ->orderBy('sum', 'desc')
             ->pluck('sum','truck');
         $data = [];
@@ -219,8 +238,10 @@ class StatController extends Controller
     }
     protected function find_top_ten_broker_loads_count()
     {
+        $account = Auth::user()->account;
         $summations = Load::groupBy('broker')
             ->selectRaw('count(*) as cnt, broker')
+            ->where('account', $account)
             ->pluck('cnt','broker');
         $data = [];
         // return $summations;
@@ -239,12 +260,15 @@ class StatController extends Controller
     }
     protected function find_top_ten_driver_rev()
     {
+        $account = Auth::user()->account;
         $summation_a = Load::groupBy('driver_a')
             ->selectRaw('sum(rate) as sum, driver_a')
+            ->where('account', $account)
             ->orderBy('sum', 'desc')
             ->pluck('sum','driver_a');
         $summation_b = Load::groupBy('driver_b')
             ->selectRaw('sum(rate) as sum, driver_b as driver_a')
+            ->where('account', $account)
             ->where('driver_b', '!=', 'nn')
             ->orderBy('sum', 'desc')
             ->pluck('sum','driver_a');
@@ -282,10 +306,16 @@ class StatController extends Controller
     protected function find_revenue_avr()
     {
         $now = date('Y-m-d');
-        $first_trip_date = Load::where('is_active', true)->orderBy('id', 'asc')->first();
+        $account = Auth::user()->account;
+        $first_trip_date = Load::where('is_active', true)
+            ->where('account', $account)->orderBy('id', 'asc')->first();
+        if(is_null($first_trip_date))
+        {
+            return 0;
+        }
         $first_trip_date = $first_trip_date->created_at;
         $months_count = $this->count_months($first_trip_date, $now);
-        $sum_loads = Load::where('is_active', true)->sum('rate');
+        $sum_loads = Load::where('is_active', true)->where('account', $account)->sum('rate');
         $avr = $sum_loads/$months_count;
         $avr = $this->format_ks($avr);
         return $avr;
@@ -293,15 +323,16 @@ class StatController extends Controller
     protected function find_expenses_avr()
     {
         $now = date('Y-m-d');
-        $first_exp_date = Expense::where('is_active', true)->orderBy('id', 'asc')->first();
+        $account = Auth::user()->account;
+        $first_exp_date = Expense::where('is_active', true)->where('account', $account)->orderBy('id', 'asc')->first();
         if(is_null($first_exp_date))
         {
             return 0;
         }
         $first_exp_date = $first_exp_date->created_at;
         $months_count = $this->count_months($first_exp_date, $now);
-        $sum_exp_a = Expense::where('is_active', true)->sum('amount');
-        $sum_exp_b = Expense::where('is_active', true)->sum('misc_amount');
+        $sum_exp_a = Expense::where('is_active', true)->where('account', $account)->sum('amount');
+        $sum_exp_b = Expense::where('is_active', true)->where('account', $account)->sum('misc_amount');
         $sum_exp = $sum_exp_a + $sum_exp_b;
         $avr = $sum_exp/$months_count;
         $avr = $this->format_ks($avr);
@@ -309,11 +340,15 @@ class StatController extends Controller
     }
     protected function find_trips_count()
     {
-        return Load::where('is_active', true)->count();
+        $account = Auth::user()->account;
+        return Load::where('is_active', true)
+            ->where('account', $account)->count();
     }
     protected function find_trucks_count()
     {
-        return Truck::where('is_active', true)->count();
+        $account = Auth::user()->account;
+        return Truck::where('is_active', true)
+            ->where('account', $account)->count();
     }
     protected function count_months($fdate, $sdate)
     {
@@ -336,9 +371,13 @@ class StatController extends Controller
     protected function find_truck_reminders()
     {
         $now = date('Y-m-d');
-        $insurance = Truck::where('insurance_expires', '<', $now)->get();
-        $inspection = Truck::where('inspection_expires', '<', $now)->get();
-        $registration = Truck::where('registration_expires', '<', $now)->get();
+        $account = Auth::user()->account;
+        $insurance = Truck::where('insurance_expires', '<', $now)
+            ->where('account', $account)->get();
+        $inspection = Truck::where('inspection_expires', '<', $now)
+            ->where('account', $account)->get();
+        $registration = Truck::where('registration_expires', '<', $now)
+            ->where('account', $account)->get();
         $insur = $this->format_insu($insurance);
         $inspec = $this->format_inspect($inspection);
         $regi = $this->format_reg($registration);

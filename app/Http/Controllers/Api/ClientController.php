@@ -14,17 +14,16 @@ use Config;
 use DB;
 use Carbon\Carbon;
 
-use App\Models\Owner;
+use App\Models\Client;
 use App\Models\Freport;
 
-class OwnerController extends Controller
+class ClientController extends Controller
 {
     public function add(Request $req)
     {
         $validator = Validator::make($req->all(), [
             'company' => 'required|string',
-            // 'fname' => 'required|string',
-            // 'lname' => 'required|string',
+            'contact_name' => 'required|string',
             'address' => 'required|string',
             'city' => 'required|string',
             'state' => 'required|string',
@@ -41,20 +40,19 @@ class OwnerController extends Controller
         }
         $input = $req->all();
         $input['account'] = Auth::user()->account;
-        $created = Owner::create($input)->id;
+        $created = Client::create($input)->id;
         return response([
             'status' => 200,
             'message' => 'Entry created successfully',
             'id' => $created,
-            'data' => $this->find_owners(),
+            'data' => $this->find_clients(),
         ], 200);
     }
     public function edit(Request $req, $id)
     {
         $validator = Validator::make($req->all(), [
             'company' => 'required|string',
-            // 'fname' => 'required|string',
-            // 'lname' => 'required|string',
+            'contact_name' => 'required|string',
             'address' => 'required|string',
             'city' => 'required|string',
             'state' => 'required|string',
@@ -71,17 +69,17 @@ class OwnerController extends Controller
         }
         $input = $req->all();
         $input['account'] = Auth::user()->account;
-        Owner::find($id)->update($input);
+        Client::find($id)->update($input);
         return response([
             'status' => 200,
             'message' => 'Entry updated successfully',
             'id' => $id,
-            'data' => $this->find_owners(),
+            'data' => $this->find_clients(),
         ], 200);
     }
     public function find($id)
     {
-        $data = Owner::find($id);
+        $data = Client::find($id);
         return response([
             'status' => 200,
             'message' => 'Entry fetched successfully',
@@ -93,25 +91,14 @@ class OwnerController extends Controller
         return response([
             'status' => 200,
             'message' => 'Entries fetched successfully',
-            'data' => $this->find_owners(),
-            'next_report' => $this->find_next_rpt(),
+            'data' => $this->find_clients(),
         ], 200);
     }
-    protected function find_next_rpt()
-    {
-        $prefix = '1000';
-        $d = Freport::max('id');
-        if(is_null($d))
-        {
-            return $prefix . '1';
-        }
-        return  $prefix . $d->id;
-    }
-    protected function find_owners()
+    protected function find_clients()
     {
         $data = [];
         $account = Auth::user()->account;
-        $p = Owner::where('is_active', true)->where('account', $account)->get();
+        $p = Client::where('is_active', true)->where('account', $account)->get();
         if(!is_null($p))
         {
             $data = $p->toArray();
@@ -120,7 +107,7 @@ class OwnerController extends Controller
     }
     public function drop($id)
     {
-        Owner::find($id)->update([ 'is_active' => false ]);
+        Client::find($id)->update([ 'is_active' => false ]);
         return response([
             'status' => 200,
             'message' => 'Entry deleted successfully',

@@ -66,7 +66,9 @@ class EarningController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $account = Auth::user()->account;
         $p = Load::where('is_active', true)
+            ->where('account', $account)
             ->where('driver_a', $input['driver'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
@@ -74,6 +76,7 @@ class EarningController extends Controller
         if(is_null($p))
         {
             $p = Load::where('is_active', true)
+                ->where('account', $account)
                 ->where('driver_b', $input['driver'])
                 ->where('created_at', '>=', $from_date)
                 ->where('created_at', '<=', $to_date)
@@ -139,7 +142,9 @@ class EarningController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $account = Auth::user()->account;
         $p = Load::where('is_active', true)
+            ->where('account', $account)
             ->where('driver_a', $input['driver'])
             ->whereNotIn('id', $input['except'])
             ->where('created_at', '>=', $from_date)
@@ -148,6 +153,7 @@ class EarningController extends Controller
         if(is_null($p))
         {
             $p = Load::where('is_active', true)
+                ->where('account', $account)
                 ->where('driver_b', $input['driver'])
                 ->whereNotIn('id', $input['except'])
                 ->where('created_at', '>=', $from_date)
@@ -219,7 +225,9 @@ class EarningController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $account = Auth::user()->account;
         $p = Load::where('is_active', true)
+            ->where('account', $account)
             ->where('dispatcher', $input['dispatcher'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
@@ -283,7 +291,9 @@ class EarningController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $account = Auth::user()->account;
         $p = Load::where('is_active', true)
+            ->where('account', $account)
             ->where('dispatcher', $input['dispatcher'])
             ->whereNotIn('id', $input['except'])
             ->where('created_at', '>=', $from_date)
@@ -316,14 +326,17 @@ class EarningController extends Controller
     }
     protected function f_advances($user, $date1, $date2)
     {
+        $account = Auth::user()->account;
         $data = Advance::where('is_active', true)
             ->where('user', $user)
+            ->where('account', $account)
             ->where('user_type', 1)
             ->where('payfrom', '>=', $date1)
             ->where('payto', '<=', $date2)
             ->get();
         $sum = Advance::where('is_active', true)
             ->where('user', $user)
+            ->where('account', $account)
             ->where('user_type', 1)
             ->where('payfrom', '>=', $date1)
             ->where('payto', '<=', $date2)
@@ -336,14 +349,17 @@ class EarningController extends Controller
     }
     protected function f_advances_dispa($user, $date1, $date2)
     {
+        $account = Auth::user()->account;
         $data = Advance::where('is_active', true)
             ->where('user', $user)
+            ->where('account', $account)
             ->where('user_type', 2)
             ->where('payfrom', '>=', $date1)
             ->where('payto', '<=', $date2)
             ->get();
         $sum = Advance::where('is_active', true)
             ->where('user', $user)
+            ->where('account', $account)
             ->where('user_type', 2)
             ->where('payfrom', '>=', $date1)
             ->where('payto', '<=', $date2)
@@ -459,7 +475,8 @@ class EarningController extends Controller
     }
     protected function find_setup()
     {
-        $s = Setup::where('id', '!=', 0)->first();
+        $account = Auth::user()->account;
+        $s = Setup::where('account', $account)->first();
         if(!is_null($s))
         {
             return $s->toArray();

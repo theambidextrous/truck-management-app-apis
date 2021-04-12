@@ -14,6 +14,7 @@ use Config;
 use Carbon\Carbon;
 
 use App\Models\Load;
+use App\Models\Client;
 use App\Models\Truck;
 use App\Models\Broker;
 use App\Models\Driver;
@@ -25,7 +26,7 @@ class LoadController extends Controller
         $validator = Validator::make($req->all(), [
             'date' => 'required|string',
             'bol' => 'required|string',
-            'company' => 'required|string',
+            'company' => 'required|string',//Client::
             'street' => 'required|string',
             'city' => 'required|string',
             'state' => 'required|string|not_in:nn',
@@ -33,7 +34,7 @@ class LoadController extends Controller
             'broker' => 'required|string',
             'd_date' => 'required|string',
             'pol' => 'required|string',
-            'd_company' => 'required|string',
+            'd_company' => 'required|string',//Client::
             'd_street' => 'required|string',
             'd_city' => 'required|string',
             'd_state' => 'required|string|not_in:nn',
@@ -53,6 +54,7 @@ class LoadController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $input['account'] = Auth::user()->account;
         try
         {
             $this->has_expired_docs($input['truck']);
@@ -87,7 +89,7 @@ class LoadController extends Controller
         $validator = Validator::make($req->all(), [
             'date' => 'required|string',
             'bol' => 'required|string',
-            'company' => 'required|string',
+            'company' => 'required|string',//Client::
             'street' => 'required|string',
             'city' => 'required|string',
             'state' => 'required|string|not_in:nn',
@@ -95,7 +97,7 @@ class LoadController extends Controller
             'broker' => 'required|string',
             'd_date' => 'required|string',
             'pol' => 'required|string',
-            'd_company' => 'required|string',
+            'd_company' => 'required|string',//Client::
             'd_street' => 'required|string',
             'd_city' => 'required|string',
             'd_state' => 'required|string|not_in:nn',
@@ -115,6 +117,7 @@ class LoadController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $input['account'] = Auth::user()->account;
         try
         {
             $this->has_expired_docs($input['truck']);
@@ -127,7 +130,9 @@ class LoadController extends Controller
                 'errors' => [],
             ], 403);
         }
-        Load::find($id)->update($input);
+        Load::where('id', $id)
+            ->where('account', $input['account'])
+            ->first()->update($input);
         return response([
             'status' => 200,
             'message' => 'Load entry updated successfully',
@@ -137,7 +142,9 @@ class LoadController extends Controller
     }
     public function find($id)
     {
-        $data = Load::find($id);
+        $data = Load::where('id', $id)
+            ->where('account', Auth::user()->account)
+            ->first();
         return response([
             'status' => 200,
             'message' => 'Load entry fetched successfully',
@@ -241,7 +248,8 @@ class LoadController extends Controller
     }
     public function brokers()
     {
-        $b = Broker::where('id', '!=', 0)->orderBy('name', 'asc')->get();
+        $account = Auth::user()->account;
+        $b = Broker::whereIn('account', [$account, 1])->orderBy('name', 'asc')->get();
         if( !is_null($b) )
         {
             $b = $b->toArray();
@@ -259,7 +267,9 @@ class LoadController extends Controller
     protected function find_loads()
     {
         $data = [];
-        $p = Load::where('is_active', true)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = Load::where('is_active', true)
+            ->where('account', $account)->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();
@@ -274,6 +284,16 @@ class LoadController extends Controller
             $_load['truck_label'] = $la[0];
             $_load['driver_label'] = $la[1];
             $_load['driverb_label'] = $la[2];
+            $client = Client::find($_load['company']);
+            $d_client = Client::find($_load['d_company']);
+            if(!is_null($client))
+            {
+                $_load['company_label'] = $client->company;
+            }
+            if(!is_null($d_client))
+            {
+                $_load['dcompany_label'] = $d_client->company;
+            }
             $brok = Broker::find($_load['broker']);
             if(!is_null($brok))
             {
@@ -311,7 +331,8 @@ class LoadController extends Controller
     }
     protected function exists_load_number($no)
     {
-        return Load::where('bol', $no)->count() > 0;
+        $account = Auth::user()->account;
+        return Load::where('bol', $no)->where('account', $account)->count() > 0;
     }
     protected function has_expired_docs($truck)
     {

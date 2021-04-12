@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateFreportsTable extends Migration
+class CreatePaymentsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,13 +13,13 @@ class CreateFreportsTable extends Migration
      */
     public function up()
     {
-        Schema::create('freports', function (Blueprint $table) {
+        Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->string('account', 16);
-            $table->string('name', 55);
-            $table->string('download');
-            $table->text('items');
-            $table->boolean('is_active')->default(true);
+            $table->string('invoice', 16);
+            $table->string('amount', 10);
+            $table->boolean('is_paid')->default(false);
+            $table->text('payload')->nullable();
             $table->timestamps();
         });
     }
@@ -31,6 +31,6 @@ class CreateFreportsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('freports');
+        Schema::dropIfExists('payments');
     }
 }

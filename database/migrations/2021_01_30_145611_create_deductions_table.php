@@ -15,6 +15,7 @@ class CreateDeductionsTable extends Migration
     {
         Schema::create('deductions', function (Blueprint $table) {
             $table->id();
+            $table->string('account', 16);
             $table->string('expense', 5);
             $table->string('deducted', 5);
             $table->string('payment_date', 15);

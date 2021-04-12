@@ -10,6 +10,10 @@ class Setup extends Model
     use HasFactory;
 
     protected $fillable = [
+        'account',
+        'active_from',
+        'active_to',
+        'custodian_email',
         'company',
         'address',
         'city',

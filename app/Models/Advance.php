@@ -10,6 +10,7 @@ class Advance extends Model
     use HasFactory;
 
     protected $fillable = [
+        'account',
         'payfrom',
         'payto',
         'user',

@@ -11,6 +11,7 @@ class ExpenseGroup extends Model
 
     
     protected $fillable = [
+        'account',
         'name',
         'description',
     ];

@@ -5,21 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Owner extends Model
+class Invoice extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'account',
-        'company',
-        // 'fname',
-        // 'lname',
         'address',
-        'city',
-        'state',
-        'zip',
-        'email',
-        'phone',
-        'is_active',
+        'invoice_amount',
+        'paid_amount',
+        'is_recurring',
+        'is_paid',
+        'next_auto_charge',
     ];
 }

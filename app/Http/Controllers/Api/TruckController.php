@@ -20,6 +20,7 @@ class TruckController extends Controller
 {
     public function add(Request $req)
     {
+        $account = Auth::user()->account;
         $validator = Validator::make($req->all(), [
             'number' => 'required|string',
             'owner' => 'required|string|not_in:nn',
@@ -37,6 +38,7 @@ class TruckController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $input['account'] = $account;
         $input['number'] = strtoupper($input['number']);
         $input['make'] = strtoupper($input['make']);
         $input['vin'] = strtoupper($input['vin']);
@@ -74,6 +76,7 @@ class TruckController extends Controller
             Storage::disk('local')->putFileAs('cls', $csv, $file_name);
             $csv_data = Truck::csvToArray($file_name);
             $created = [];
+            $account = Auth::user()->account;
             foreach( $csv_data as $_truck ):
                 if(!isset( $_truck['number'] ))
                 {
@@ -134,6 +137,7 @@ class TruckController extends Controller
                 $_truck['number'] = strtoupper($_truck['number']);
                 $_truck['make'] = strtoupper($_truck['make']);
                 $_truck['vin'] = strtoupper($_truck['vin']);
+                $_truck['account'] = $account;
                 if( !intval($_truck['owner']))
                 {
                     $_truck['owner'] = 0;
@@ -157,6 +161,7 @@ class TruckController extends Controller
     }
     public function edit(Request $req, $id)
     {
+        $account = Auth::user()->account;
         $validator = Validator::make($req->all(), [
             'number' => 'required|string',
             'owner' => 'required|string',
@@ -174,6 +179,7 @@ class TruckController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $input['account'] = $account;
         $input['number'] = strtoupper($input['number']);
         $input['make'] = strtoupper($input['make']);
         $input['vin'] = strtoupper($input['vin']);
@@ -197,7 +203,9 @@ class TruckController extends Controller
     public function findall()
     {
         $data = [];
-        $p = Truck::where('is_active', true)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = Truck::where('is_active', true)
+            ->where('account', $account)->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();
@@ -220,7 +228,9 @@ class TruckController extends Controller
     protected function find_trucks()
     {
         $data = [];
-        $p = Truck::where('is_active', true)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = Truck::where('is_active', true)
+            ->where('account', $account)->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();

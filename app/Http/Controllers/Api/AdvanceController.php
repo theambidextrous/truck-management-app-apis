@@ -38,6 +38,7 @@ class AdvanceController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $input['account'] = Auth::user()->account;
         $created = Advance::create($input)->id;
         return response([
             'status' => 200,
@@ -82,6 +83,7 @@ class AdvanceController extends Controller
     }
     public function users($type)
     {
+        $account = Auth::user()->account;
         if( $type == 'nn')
         {
             $type = 1;
@@ -89,7 +91,7 @@ class AdvanceController extends Controller
         if( intval($type) == 1 )
         {
             $drivers = $dispatchers = [];
-            $d = Driver::where('is_active', true)->get();
+            $d = Driver::where('is_active', true)->where('account', $account)->get();
             if( !is_null($d) )
             {
                 $drivers = $d->toArray();
@@ -103,7 +105,7 @@ class AdvanceController extends Controller
 
         if( intval($type) == 2 )
         {
-            $ds = User::where('is_active', true)->get();
+            $ds = User::where('is_active', true)->where('account', $account)->get();
             if( !is_null($ds) )
             {
                 $dispatchers = $ds->toArray();
@@ -118,7 +120,8 @@ class AdvanceController extends Controller
     public function findall()
     {
         $data = [];
-        $p = Advance::where('is_active', true)->get();
+        $account = Auth::user()->account;
+        $p = Advance::where('is_active', true)->where('account', $account)->get();
         if(!is_null($p))
         {
             $data = $p->toArray();
@@ -141,7 +144,8 @@ class AdvanceController extends Controller
     protected function find_advances()
     {
         $data = [];
-        $p = Advance::where('is_active', true)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = Advance::where('is_active', true)->where('account', $account)->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();

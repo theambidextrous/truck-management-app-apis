@@ -72,8 +72,10 @@ class ReportController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $account = Auth::user()->account;
         $p = Load::where('is_active', true)
             ->where('truck', $input['truck'])
+            ->where('account', $account)
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->get();
@@ -151,8 +153,10 @@ class ReportController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $account = Auth::user()->account;
         $p = Load::where('is_active', true)
             ->where('truck', $input['truck'])
+            ->where('account', $account)
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->get();
@@ -196,13 +200,16 @@ class ReportController extends Controller
     public function find_loads_delivered()
     {
         $trips = [];
+        $account = Auth::user()->account;
         $p = Load::where('is_active', true)
             ->where('is_delivered', true)
+            ->where('account', $account)
             ->where('is_paid', false)
             ->orderBy('id', 'desc')
             ->get();
         $summation_dollar = Load::where('is_active', true)
             ->where('is_delivered', true)
+            ->where('account', $account)
             ->where('is_paid', false)
             ->sum('rate');
         if(!is_null($p))
@@ -231,16 +238,19 @@ class ReportController extends Controller
             ], 403);
         }
         $trips = [];
+        $account = Auth::user()->account;
         $company = $req->get('company');
         $company_trucks = $this->find_co_trucks($company);
         $p = Load::where('is_active', true)
             ->where('is_delivered', true)
+            ->where('account', $account)
             ->where('is_paid', false)
             ->whereIn('truck', $company_trucks)
             ->orderBy('id', 'desc')
             ->get();
         $summation_dollar = Load::where('is_active', true)
             ->where('is_delivered', true)
+            ->where('account', $account)
             ->where('is_paid', false)
             ->whereIn('truck', $company_trucks)
             ->sum('rate');
@@ -273,7 +283,8 @@ class ReportController extends Controller
     }
     protected function find_co_trucks($co)
     {
-        $d = Truck::select('id')->where('owner', $co)->get();
+        $account = Auth::user()->account;
+        $d = Truck::select('id')->where('owner', $co)->where('account', $account)->get();
         if(is_null($d))
         {
             return [];
@@ -294,6 +305,7 @@ class ReportController extends Controller
             ], 403);
         }
         $trips = [];
+        $account = Auth::user()->account;
         $totals = 0;
         $loadIds = $req->get('loads');
         sort($loadIds);
@@ -308,9 +320,11 @@ class ReportController extends Controller
         $firstId = $loadIds[0];
         $reportName = 'exp-inv-loads-' . $loadIds[0] . '-to-load-' . $loadIds[count($loadIds)-1];
         $p = Load::where('is_active', true)
+            ->where('account', $account)
             ->whereIn('id', $loadIds)
             ->get();
         $sum = Load::where('is_active', true)
+            ->where('account', $account)
             ->whereIn('id', $loadIds)
             ->sum('rate');
         if(!is_null($p)){ 
@@ -328,11 +342,12 @@ class ReportController extends Controller
             'orientation' => 'L'
         ])->save(storage_path($filename));
         $freportData = [
+            'account' => $account,
             'name' => $reportName,
             'download' => $uuid_string,
             'items' => implode(',', $loadIds),
         ];
-        Freport::where('name', $reportName)->delete();
+        Freport::where('name', $reportName)->where('account', $account)->delete();
         Freport::create($freportData);
         return response([
             'status' => 200,
@@ -356,6 +371,7 @@ class ReportController extends Controller
             ], 403);
         }
         $trips = [];
+        $account = Auth::user()->account;
         $totals = 0;
         $loadIds = $req->get('loads');
         sort($loadIds);
@@ -371,9 +387,11 @@ class ReportController extends Controller
         $reportName = 'exp-inv-loads-' . $loadIds[0] . '-to-load-' . $loadIds[count($loadIds)-1] . '.pdf';
         $p = Load::where('is_active', true)
             ->whereIn('id', $loadIds)
+            ->where('account', $account)
             ->get();
         $sum = Load::where('is_active', true)
             ->whereIn('id', $loadIds)
+            ->where('account', $account)
             ->sum('rate');
         if(!is_null($p)){ 
             $trips = $p->toArray();
@@ -406,11 +424,12 @@ class ReportController extends Controller
         }
         /** end zipper */
         $freportData = [
+            'account' => $account,
             'name' => $reportName,
             'download' => $zip_uuid_string,
             'items' => implode(',', $loadIds),
         ];
-        Freport::where('name', $reportName)->delete();
+        Freport::where('name', $reportName)->where('account', $account)->delete();
         Freport::create($freportData);
         return response([
             'status' => 200,
@@ -434,6 +453,7 @@ class ReportController extends Controller
             ], 403);
         }
         $trips = [];
+        $account = Auth::user()->account;
         $totals = 0;
         $loadIds = $req->get('loads');
         sort($loadIds);
@@ -449,6 +469,7 @@ class ReportController extends Controller
         $reportName = 'exp-paperwork-loads-' . $loadIds[0] . '-to-load-' . $loadIds[count($loadIds)-1] . '.zip';
         $p = Load::where('is_active', true)
             ->whereIn('id', $loadIds)
+            ->where('account', $account)
             ->get();
         if(!is_null($p)){ 
             $trips = $p->toArray();
@@ -469,11 +490,12 @@ class ReportController extends Controller
         }
         /** end zipper */
         $freportData = [
+            'account' => $account,
             'name' => $reportName,
             'download' => $zip_uuid_string,
             'items' => implode(',', $loadIds),
         ];
-        Freport::where('name', $reportName)->delete();
+        Freport::where('name', $reportName)->where('account', $account)->delete();
         Freport::create($freportData);
         return response([
             'status' => 200,
@@ -578,11 +600,13 @@ class ReportController extends Controller
     {
         $from_date = date('Y-m-d', strtotime($arr['from_date']));
         $to_date = date('Y-m-d', strtotime($arr['to_date']));
+        $account = Auth::user()->account;
 
         if( $f > 0 )
         {
             $p = Expense::where('type', $t)
                 ->where('is_active', true)
+                ->where('account', $account)
                 ->where('is_paid', false)
                 ->where('next_due', '!=', null)
                 ->where('truck', $arr['truck'])
@@ -590,6 +614,7 @@ class ReportController extends Controller
                 ->get();
             $sum = Expense::where('type', $t)
                 ->where('is_active', true)
+                ->where('account', $account)
                 ->where('is_paid', false)
                 ->where('next_due', '!=', null)
                 ->where('truck', $arr['truck'])
@@ -612,18 +637,21 @@ class ReportController extends Controller
         }
         $p = Expense::where('type', $t)
             ->where('is_active', true)
+            ->where('account', $account)
             ->where('truck', $arr['truck'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->get();
         $sum = Expense::where('type', $t)
             ->where('is_active', true)
+            ->where('account', $account)
             ->where('truck', $arr['truck'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
             ->sum('amount');
         $sum_misc = Expense::where('type', $t)
             ->where('is_active', true)
+            ->where('account', $account)
             ->where('truck', $arr['truck'])
             ->where('created_at', '>=', $from_date)
             ->where('created_at', '<=', $to_date)
@@ -715,7 +743,8 @@ class ReportController extends Controller
     }
     protected function find_setup()
     {
-        $s = Setup::where('id', '!=', 0)->first();
+        $account = Auth::user()->account;
+        $s = Setup::where('account', $account)->first();
         if(!is_null($s))
         {
             return $s->toArray();

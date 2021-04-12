@@ -27,6 +27,10 @@ return [
     */
 
     'env' => env('APP_ENV', 'production'),
+    'try' => env('APP_TRY', 7),
+    'price' => env('APP_PRICE'),
+    'stripe_public_key' => env('STRIPE_PUBLIC_KEY'),
+    'stripe_private_key' => env('STRIPE_PRIVATE_KEY'),
     'mapskey' => env('APP_MAPSKEY'),
     /**
      * FOREX CONFIG

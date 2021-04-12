@@ -14,11 +14,13 @@ use App\Http\Controllers\Api\TruckController;
 use App\Http\Controllers\Api\LoadController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\OwnerController;
+use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\EarningController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\StatController;
 use App\Http\Controllers\Api\AdvanceController;
 use App\Http\Controllers\Api\DeductionController;
+use App\Http\Controllers\Api\PaymentController;
 
 /** stream */
 Route::prefix('/downloads')->group( function() {
@@ -35,6 +37,15 @@ Route::prefix('/users')->group( function() {
         Route::post('/update/info', [AdminController::class, 'update_info']);
         Route::post('/update/pwd', [AdminController::class, 'update_pwd']);
         Route::post('/update/pic', [AdminController::class, 'update_pic']);
+    });
+});
+/** Payments */
+Route::middleware(['auth:api'])->group( function(){
+    Route::prefix('/payments')->group( function() {
+        Route::post('/pricing', [PaymentController::class, 'pricing']);
+        Route::post('/pay', [PaymentController::class, 'pay']);
+        Route::post('/info', [PaymentController::class, 'info']);
+        Route::post('/status', [PaymentController::class, 'status']);
     });
 });
 /** Setup */
@@ -84,6 +95,16 @@ Route::middleware(['auth:api'])->group( function(){
         Route::get('/find/{id}', [OwnerController::class, 'find']);
         Route::get('/findall', [OwnerController::class, 'findall']);
         Route::put('/drop/{id}', [OwnerController::class, 'drop']);
+    });
+});
+/** Clients */
+Route::middleware(['auth:api'])->group( function(){
+    Route::prefix('/clients')->group( function() {
+        Route::post('/add', [ClientController::class, 'add']);
+        Route::post('/edit/{id}', [ClientController::class, 'edit']);
+        Route::get('/find/{id}', [ClientController::class, 'find']);
+        Route::get('/findall', [ClientController::class, 'findall']);
+        Route::put('/drop/{id}', [ClientController::class, 'drop']);
     });
 });
 /** loads */

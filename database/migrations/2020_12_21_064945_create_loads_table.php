@@ -15,6 +15,8 @@ class CreateLoadsTable extends Migration
     {
         Schema::create('loads', function (Blueprint $table) {
             $table->id();
+            $table->string('account', 16);
+            $table->boolean('is_active')->default(true);
             $table->string('dispatcher', 5);
             /** pickup */
             $table->string('date', 15);

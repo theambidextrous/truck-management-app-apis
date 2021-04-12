@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class AddColsToLoadsTable extends Migration
+class AddStripeToSetupsTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,8 +13,9 @@ class AddColsToLoadsTable extends Migration
      */
     public function up()
     {
-        Schema::table('loads', function (Blueprint $table) {
-            $table->boolean('is_active')->default(true);
+        Schema::table('setups', function (Blueprint $table) {
+            $table->string('stripe_user', 55)->nullable();
+            $table->string('stripe_pay_method', 55)->nullable();
         });
     }
 
@@ -25,7 +26,7 @@ class AddColsToLoadsTable extends Migration
      */
     public function down()
     {
-        Schema::table('loads', function (Blueprint $table) {
+        Schema::table('setups', function (Blueprint $table) {
             //
         });
     }

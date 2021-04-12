@@ -37,49 +37,39 @@ class SetupController extends Controller
                 'errors' => $validator->errors()->all(),
             ], 403);
         }
-
+        $input = $req->all();
+        $account = Auth::user()->account;
+        $input['account'] = $account;
         /** user meta */
         $accessToken = Auth::user()->createToken('authToken')->accessToken;
         $user = Auth::user();
         $user['token'] = $accessToken;
-        $user['has_setup'] = Setup::count();
         /** end meta */
         $fax = $req->get('fax');
         if(!strlen($req->get('fax')))
         {
             $fax = 'N/A';
         }
-        if( Setup::count() > 0 )
-        {
-            $s = Setup::where('id', '!=', 0)->first();
-            $s->company = $req->get('company');
-            $s->address = $req->get('address');
-            $s->city = $req->get('city');
-            $s->state = $req->get('state');
-            $s->zip = $req->get('zip');
-            $s->email = $req->get('email');
-            $s->phone = $req->get('phone');
-            $s->fax = $fax;
-            $s->save();
-            return response([
-                'status' => 200,
-                'message' => 'Setup info updated successfully',
-                'id' => $s->id,
-                'udata' => $user,
-            ], 200);
-        }
-        else
-        {
-            $input = $req->all();
-            $input['fax'] = $fax;
-            $created = Setup::create($input)->id;
-            return response([
-                'status' => 200,
-                'message' => 'Setup info updated successfully',
-                'id' => $created,
-                'udata' => $user,
-            ], 200);
-        }
+        $s = Setup::where('account', $account)->first();
+        $s->company = $req->get('company');
+        $s->address = $req->get('address');
+        $s->city = $req->get('city');
+        $s->state = $req->get('state');
+        $s->zip = $req->get('zip');
+        $s->email = $req->get('email');
+        $s->phone = $req->get('phone');
+        $s->fax = $fax;
+        $s->save();
+        $user['has_expired'] = $this->account_expired();
+        $user['is_near'] = $this->account_is_near_expiry();
+        $user['has_setup'] = Setup::where('account', $account)
+            ->where('email', '!=', null)->count();
+        return response([
+            'status' => 200,
+            'message' => 'Setup info updated successfully',
+            'id' => $s->id,
+            'udata' => $user,
+        ], 200);
     }
     public function find()
     {
@@ -93,7 +83,8 @@ class SetupController extends Controller
             'phone' => '',
             'fax' => '',
         ];
-        $d = Setup::where('id', '!=', 0)->first();
+        $account = Auth::user()->account;
+        $d = Setup::where('account', $account)->first();
         if(!is_null($d))
         {
             $data = $d->toArray();
@@ -107,14 +98,53 @@ class SetupController extends Controller
 
     public function refresh()
     {
+        $account = Auth::user()->account;
         $accessToken = Auth::user()->createToken('authToken')->accessToken;
         $user = Auth::user();
         $user['token'] = $accessToken;
-        $user['has_setup'] = Setup::count();
+        $user['has_expired'] = $this->account_expired();
+        $user['has_setup'] = Setup::where('account', $account)
+            ->where('email', '!=', null)->count();
         return response([
             'status' => 200,
             'message' => 'Success. new data',
             'data' => $user,
         ], 200);
+    }
+
+    protected function account_expired()
+    {
+        $account = Auth::user()->account;
+        $co = Setup::where('account', $account)->first();
+        if(is_null($co) || is_null($co->active_to))
+        {
+            return 1;
+        }
+        $exp = date('Y-m-d', strtotime($co->active_to));
+        $now = date('Y-m-d');
+        if( $now > $exp )
+        {
+            return 1;
+        }
+        return 0;
+    }
+    protected function account_is_near_expiry()
+    {
+        $account = Auth::user()->account;
+        $co = Setup::where('account', $account)->first();
+        if(is_null($co) || is_null($co->active_to))
+        {
+            return 1;
+        }
+        $exp = strtotime($co->active_to);
+        $now = time();
+        $diff = $exp - $now;
+        if( $diff < 0 ){ return 1; }
+        $days = round($diff / (60 * 60 * 24));
+        if($days <= 7 )
+        {
+            return 1;
+        }
+        return 0;
     }
 }

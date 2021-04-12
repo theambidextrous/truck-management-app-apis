@@ -45,6 +45,7 @@ class StaffController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $input['account'] = Auth::user()->account;
         if(intval($input['rate_type']) == 1 && intval($input['rate']) >= 50 )
         {
             return response([
@@ -111,6 +112,7 @@ class StaffController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $input['account'] = Auth::user()->account;
         if(intval($input['rate_type']) == 1 && intval($input['rate']) >= 50 )
         {
             return response([
@@ -163,7 +165,9 @@ class StaffController extends Controller
     public function findall()
     {
         $data = [];
-        $p = User::where('is_active', true)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = User::where('is_active', true)
+            ->where('account', $account)->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();
@@ -202,7 +206,9 @@ class StaffController extends Controller
     protected function find_staffs()
     {
         $data = [];
-        $p = User::where('is_active', true)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = User::where('is_active', true)
+            ->where('account', $account)->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();

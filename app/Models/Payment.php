@@ -5,15 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Freport extends Model
+class Payment extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'account',
-        'name',
-        'download',
-        'items',
-        'is_active',
+        'invoice',
+        'amount',
+        'is_paid',
+        'payload',
     ];
 }

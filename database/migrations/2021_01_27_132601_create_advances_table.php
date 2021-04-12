@@ -15,6 +15,7 @@ class CreateAdvancesTable extends Migration
     {
         Schema::create('advances', function (Blueprint $table) {
             $table->id();
+            $table->string('account', 16);
             $table->string('payfrom', 15);
             $table->string('payto', 15);
             $table->string('user', 15);

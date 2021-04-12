@@ -37,6 +37,7 @@ class DeductionController extends Controller
             ], 403);
         }
         $input = $req->all();
+        $account = Auth::user()->account;
         $input['initiator'] = Auth::user()->id;
         $exp_meta = Expense::find($input['expense']);
         $paid_sum = $this->find_paid_so_far($input['expense']);
@@ -77,6 +78,7 @@ class DeductionController extends Controller
             $next_due = null;
         }
         $pay_load = [
+            'account' => $account,
             'expense' => $input['expense'],
             'deducted' => $post_amt,
             'payment_date' => $input['payment_date'],
@@ -113,7 +115,8 @@ class DeductionController extends Controller
     public function findall()
     {
         $data = [];
-        $p = Deduction::where('id', '!=', 0)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = Deduction::where('account', $account)->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();
@@ -136,8 +139,10 @@ class DeductionController extends Controller
     public function find_scheduled()
     {
         $data = [];
+        $account = Auth::user()->account;
         $p = Expense::where('type', 1)
             ->where('is_paid', false)
+            ->where('account', $account)
             ->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
@@ -152,7 +157,8 @@ class DeductionController extends Controller
     protected function find_exp_deductions()
     {
         $data = [];
-        $p = Deduction::where('id', '!=', 0)->orderBy('id', 'desc')->get();
+        $account = Auth::user()->account;
+        $p = Deduction::where('account', $account)->orderBy('id', 'desc')->get();
         if(!is_null($p))
         {
             $data = $p->toArray();
@@ -161,7 +167,8 @@ class DeductionController extends Controller
     }
     protected function find_paid_so_far($id)
     {
-        $d = Deduction::where('expense', $id)->sum('deducted');
+        $account = Auth::user()->account;
+        $d = Deduction::where('expense', $id)->where('account', $account)->sum('deducted');
         return $d;
     }
     protected function find_next_due($date, $period)

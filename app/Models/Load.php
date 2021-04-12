@@ -9,6 +9,7 @@ class Load extends Model
 {
     use HasFactory;
     protected $fillable = [
+        'account',
         'dispatcher',
         'date',
         'bol',

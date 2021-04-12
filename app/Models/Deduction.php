@@ -10,6 +10,7 @@ class Deduction extends Model
     use HasFactory;
     
     protected $fillable = [
+        'account',
         'expense',
         'deducted',
         'payment_date',

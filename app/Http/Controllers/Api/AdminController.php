@@ -18,7 +18,7 @@ use App\Models\Pcode;
 use App\Models\Setup;
 /** mail */
 use Illuminate\Support\Facades\Mail;
-use App\Mail\Welcome;
+use App\Mail\WelcomeEmail;
 use App\Mail\Code;
 
 class AdminController extends Controller
@@ -36,8 +36,15 @@ class AdminController extends Controller
             if( $validator->fails() ){
                 return response([
                     'status' => 201,
-                    'message' => 'A required field was not found',
+                    'message' => 'A required field was not filled. All fields with asteric (*) are required',
                     'errors' => $validator->errors()->all(),
+                ], 403);
+            }
+            if( strlen($request->get('password')) < 8){
+                return response([
+                    'status' => 201,
+                    'message' => 'Password error. Passwords must match and minimum length of 8 characters',
+                    'errors' => [],
                 ], 403);
             }
             $input = $request->all();
@@ -49,12 +56,45 @@ class AdminController extends Controller
                     'errors' => [],
                 ], 403);
             }
+            $input['account'] = $this->createCode(16, 1);
             $input['password'] = Hash::make($input['password']);
-            $user = User::create($input);
-            $access_token = $user->createToken('authToken')->accessToken;
+            $user = User::create($input)->id;
+            $user = User::find($user);
+            /**auth */
+            $login = $request->validate([
+                'email' => 'required|email',
+                'password' => 'required|string'
+            ]);
+            if( !Auth::attempt( $login ) )
+            {
+                return response([
+                    'status' => 201,
+                    'message' => "Authentication after login failed. Please go to login page",
+                    'errors' => [],
+                ], 403);
+            }
+            /** end auth */
+            $access_token = Auth::user()->createToken('authToken')->accessToken;
+            $user = Auth::user();
+            $account = Auth::user()->account;
+            if(strlen($access_token) > 10)
+            {
+                /** user created we need to create company with defaults*/
+                $now = date("Y-m-d");
+                $trial_end = date("Y-m-d", strtotime("+" .Config::get('app.try'). " day"));
+                $co_payload = [
+                    'account' => $input['account'],
+                    'active_from' => $now,
+                    'active_to' => $trial_end,
+                    'custodian_email' => $input['email'],
+                ];
+                $inst = Setup::create($co_payload)->id;
+            }
             $user['token'] = $access_token;
-            $user['has_setup'] = Setup::count();
-            // Mail::to($input['email'])->send(new NewSignUp($input));
+            $user['has_setup'] = 0;
+            $user['has_expired'] = 0;
+            $user['is_near'] = $this->account_is_near_expiry();
+            Mail::to($input['email'])->send(new WelcomeEmail($input));
             return response([
                 'status' => 200,
                 'message' => 'Success. Account created',
@@ -76,6 +116,7 @@ class AdminController extends Controller
     }
     public function update_info(Request $request)
     {
+        $account = Auth::user()->account;
         try{
             $validator = Validator::make($request->all(), [
                 'fname' => 'required|string',
@@ -108,7 +149,10 @@ class AdminController extends Controller
             $user = User::find(Auth::user()->id);
             $access_token = $user->createToken('authToken')->accessToken;
             $user['token'] = $access_token;
-            $user['has_setup'] = Setup::count();
+            $user['has_setup'] = Setup::where('account', $account)
+                ->where('email', '!=', null)->count();
+            $user['has_expired'] = $this->account_expired();
+            $user['is_near'] = $this->account_is_near_expiry();
             return response([
                 'status' => 200,
                 'message' => 'Success. Account information updated',
@@ -198,8 +242,12 @@ class AdminController extends Controller
         }
         $accessToken = Auth::user()->createToken('authToken')->accessToken;
         $user = Auth::user();
+        $account = Auth::user()->account;
         $user['token'] = $accessToken;
-        $user['has_setup'] = Setup::count();
+        $user['has_setup'] = Setup::where('account', $account)
+            ->where('email', '!=', null)->count();
+        $user['has_expired'] = $this->account_expired();
+        $user['is_near'] = $this->account_is_near_expiry();
         return response([
             'status' => 200,
             'message' => 'Success. logged in',
@@ -209,6 +257,13 @@ class AdminController extends Controller
     public function reqreset($email)
     {
         try{
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return response([
+                    'status' => 201,
+                    'message' => "Invalid email address.",
+                    'errors' => [],
+                ], 403); 
+            }
             $user = User::where('email', $email)->count();
             if(!$user){
                 return response([
@@ -220,7 +275,7 @@ class AdminController extends Controller
             Pcode::where('email', $email)->update(['used' => true]);
             $code = $this->createCode(6,1);
             $data = ['email' => $email, 'code' => $code ];
-            if( Pcode::create($data) )
+            if( Pcode::create($data)->id )
             {
                 $msg = "Hi, use Verification code " . $code . " to validate your account.";
                 $data['msg'] = $msg;
@@ -316,6 +371,41 @@ class AdminController extends Controller
             'message' => 'Data error. We could not updte password',
             'errors' => []
         ], 403);
+    }
+    protected function account_expired()
+    {
+        $account = Auth::user()->account;
+        $co = Setup::where('account', $account)->first();
+        if(is_null($co) || is_null($co->active_to))
+        {
+            return 1;
+        }
+        $exp = date('Y-m-d', strtotime($co->active_to));
+        $now = date('Y-m-d');
+        if( $now > $exp )
+        {
+            return 1;
+        }
+        return 0;
+    }
+    protected function account_is_near_expiry()
+    {
+        $account = Auth::user()->account;
+        $co = Setup::where('account', $account)->first();
+        if(is_null($co) || is_null($co->active_to))
+        {
+            return 1;
+        }
+        $exp = strtotime($co->active_to);
+        $now = time();
+        $diff = $exp - $now;
+        if( $diff < 0 ){ return 1; }
+        $days = round($diff / (60 * 60 * 24));
+        if($days <= 7 )
+        {
+            return 1;
+        }
+        return 0;
     }
     protected function createCode($length = 20, $t = 0) {
         $characters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
