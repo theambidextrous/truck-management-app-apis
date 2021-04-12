@@ -580,7 +580,16 @@ class ReportController extends Controller
     }
     protected function get_driver_rate($data)
     {
-        $d = Driver::find($data['driver']);
+        $d = Driver::find($data['driver_a']);
+        if(is_null($d))
+        {
+            return 0;
+        }
+        return $this->calc_driver_earn($d->rate_type, $d->rate, $data['rate']);
+    }
+    protected function get_driverb_rate($data)
+    {
+        $d = Driver::find($data['driver_b']);
         if(is_null($d))
         {
             return 0;
@@ -776,7 +785,8 @@ class ReportController extends Controller
         if( count($trips_list) )
         {
             foreach( $trips_list as $_trip):
-                $driver = Driver::find($_trip['driver']);
+                $driver = Driver::find($_trip['driver_a']);
+                $driver_b = Driver::find($_trip['driver_b']);
                 $dispatcher = User::find($_trip['dispatcher']);
 
                 $dispatcher_rtype = $dispatcher->rate_type;
