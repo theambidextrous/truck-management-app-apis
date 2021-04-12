@@ -744,7 +744,7 @@ h4{
 <div class="wrapper">
   <div class="TextHolder">
     <div class="Texts">
-      <div class="FourOhFour">404</div>
+      <div class="FourOhFour">BlueTrux</div>
       <div class="Maybe">GUH.. Maybe.. We have <span>PROBLEMS HERE</span></div>
       <div class="Bad">MY BAD this page couldn't be found.</div>
       <div class="Return">RETURN HOME</div>
