@@ -24,9 +24,41 @@ use App\Models\User;
 use App\Models\Freport;
 use App\Models\Setup;
 use App\Models\Owner;
+use App\Models\Client;
 
 class ReportController extends Controller
 {
+    public function archives()
+    {
+        $account = Auth::user()->account;
+        $data = Freport::where('account', $account)->get();
+        $rtn = [];
+        if(!is_null($data))
+        {
+            $rtn = $data->toArray();
+        }
+        return response([
+            'status' => 201,
+            'message' => 'done',
+            'data' => $this->format_archives($rtn),
+        ], 403);
+
+    }
+    protected function format_archives($data)
+    {
+        $rtn = [];
+        if(!count($data))
+        {
+            return [];
+        }
+        foreach( $data as $_data )
+        {
+            $_data['link'] = route('stream', ['file' => $_data['download']]);
+            $_data['dated'] = date("jS M, Y", strtotime($_data['created_at']));
+            array_push($rtn, $_data);
+        }
+        return $rtn;
+    }
     public function weekly(Request $req)
     {
         $validator = Validator::make($req->all(), [
@@ -533,20 +565,20 @@ class ReportController extends Controller
                 'phone' => null,
             ]; 
         }
-        $t = Truck::find($l->truck);
-        if(is_null($t))
-        {
-            return [
-                'company' => null,
-                'address' => null,
-                'city' => null,
-                'state' => null,
-                'zip' => null,
-                'email' => null,
-                'phone' => null,
-            ]; 
-        }
-        $o = Owner::find($t->owner);
+        // $t = Truck::find($l->truck);
+        // if(is_null($t))
+        // {
+        //     return [
+        //         'company' => null,
+        //         'address' => null,
+        //         'city' => null,
+        //         'state' => null,
+        //         'zip' => null,
+        //         'email' => null,
+        //         'phone' => null,
+        //     ]; 
+        // }
+        $o = Client::find($l->company);
         if(is_null($o))
         {
             return [

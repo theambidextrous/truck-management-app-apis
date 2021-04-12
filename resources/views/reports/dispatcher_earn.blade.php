@@ -81,8 +81,11 @@
         @if(count($trips))
           @foreach( $trips as $trp )
               <tr>
-                <td>{{ $trp['number'] }}</td>
-                <td>{{ $trp['origin'] }}, {{ $trp['destination'] }}</td>
+                <td>{{ $trp['id'] }}</td>
+                <td>
+                  {{ $trp['street'] .", ". $trp['city'] .", " . $trp['state'] }}
+                  {{"  -  "}} 
+                  {{ $trp['d_street'] .", ". $trp['d_city'] .", " . $trp['d_state'] }}</td>
                 <td>{{ date('m/d/Y', strtotime($trp['created_at'])) }}</td>
                 <td>${{ $trp['rate'] }}</td>
                 <td>${{ $trp['net'] }}</td>

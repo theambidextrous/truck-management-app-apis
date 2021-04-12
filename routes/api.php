@@ -174,6 +174,7 @@ Route::middleware(['auth:api'])->group( function(){
         Route::post('/export/invoices', [ReportController::class, 'export_invoices']);
         Route::post('/export/invoices/paperwork', [ReportController::class, 'export_invoices_paperwork']);
         Route::post('/export/paperwork', [ReportController::class, 'export_paperwork']);
+        Route::post('/archives', [ReportController::class, 'archives']);
     });
 });
 /** statistics */

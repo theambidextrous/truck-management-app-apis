@@ -105,7 +105,7 @@ class OwnerController extends Controller
         {
             return $prefix . '1';
         }
-        return  $prefix . $d->id;
+        return  $prefix . $d;
     }
     protected function find_owners()
     {

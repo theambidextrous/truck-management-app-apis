@@ -378,7 +378,11 @@ class EarningController extends Controller
             $_trip['rate'] = number_format($_trip['rate'], 2);
             $_trip['net'] = $this->compute_net_rate($_trip['rate'], intval($rate));
             $net_rate = $this->clean_n($_trip['net']);
-            $d_meta = Driver::find($_trip['driver']);
+            $d_meta = Driver::find($_trip['driver_a']);
+            if(is_null($d_meta))
+            {
+                $d_meta = Driver::find($_trip['driver_b']);
+            }
             $rtype = $d_meta->rate_type;
             $r = $d_meta->rate;
             $_trip['pay'] = $this->calc_driver_earn($rtype, $r, $net_rate);

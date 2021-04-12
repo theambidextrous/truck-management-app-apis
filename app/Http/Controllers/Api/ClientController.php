@@ -92,7 +92,18 @@ class ClientController extends Controller
             'status' => 200,
             'message' => 'Entries fetched successfully',
             'data' => $this->find_clients(),
+            'next_report' => $this->find_next_rpt(),
         ], 200);
+    }
+    protected function find_next_rpt()
+    {
+        $prefix = '1000';
+        $d = Freport::max('id');
+        if(is_null($d))
+        {
+            return $prefix . '1';
+        }
+        return  $prefix . $d;
     }
     protected function find_clients()
     {

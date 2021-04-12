@@ -54,9 +54,9 @@
         <!-- <td class="td-borderless" style="width:300px!important;"></td> -->
         <td class="td-borderless" style="text-align:right!important;width:350px">
             <span style="font-weight:700; font-size:20px">Factoring Report</span><br>
-            <span style="font-weight:700; font-size:20px">{{ $owner['company'] }}</span><br>
+            <!-- <span style="font-weight:700; font-size:20px">{{ $owner['company'] }}</span><br>
             <span style="font-weight:700; font-size:20px">{{ $owner['address'] }}, {{ $owner['state'] }}, USA</span><br>
-            <span style="font-weight:700; font-size:20px">{{ $owner['email'] }}</span><br>
+            <span style="font-weight:700; font-size:20px">{{ $owner['email'] }}</span><br> -->
         </td>
       </tr>
       </table>      

@@ -87,9 +87,12 @@
         @if(count($trips))
           @foreach( $trips as $trp )
               <tr>
-                  <td>{{ $trp['number'] }}</td>
-                  <td>{{ $trp['origin'] }}, {{ $trp['destination'] }}</td>
-                  <td>{{ $trp['mileage'] }}</td>
+                  <td>{{ $trp['id'] }}</td>
+                  <td>
+                    {{ $trp['street'] .", ". $trp['city'] .", " . $trp['state'] }}
+                    {{"  -  "}} 
+                    {{ $trp['d_street'] .", ". $trp['d_city'] .", " . $trp['d_state'] }}</td>
+                  <td>{{ $trp['miles'] }}</td>
                   <td>${{ $trp['rate'] }}</td>
                   <td>{{ date('m/d/Y', strtotime($trp['created_at'])) }}</td>
                   <td>${{ $trp['net'] }}</td>
@@ -182,7 +185,7 @@
                   <td>{{ $_fuel['state'] }}</td>
                   <td>${{ $_fuel['amount_f'] }}</td>
                   <td>${{ $_fuel['misc_amount_f'] }}</td>
-                  <td>{{ date('m/d/Y', strtotime($fuel['created_at'])) }}</td>
+                  <td>{{ date('m/d/Y', strtotime($_fuel['created_at'])) }}</td>
                   <td>${{ $_fuel['total'] }}</td>
               </tr>
           @endforeach
